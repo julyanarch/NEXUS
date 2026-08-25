@@ -1,5 +1,6 @@
 import functools
 import os
+import re
 import secrets
 import shutil
 import subprocess
@@ -49,6 +50,21 @@ def servers_missing_vault():
     ]
 
 
+def temp_password_errors(password):
+    """Requisitos da senha temporaria de criacao de usuario. Retorna uma lista
+    de pendencias (vazia se a senha atende tudo)."""
+    errors = []
+    if len(password) < config.TEMP_PASSWORD_MIN_LENGTH:
+        errors.append(f"pelo menos {config.TEMP_PASSWORD_MIN_LENGTH} caracteres")
+    if not re.search(r"[A-Z]", password):
+        errors.append("uma letra maiuscula")
+    if not re.search(r"[a-z]", password):
+        errors.append("uma letra minuscula")
+    if not re.search(r"[^A-Za-z0-9]", password):
+        errors.append("um caractere especial")
+    return errors
+
+
 def register_routes(app):
 
     @app.context_processor
@@ -59,6 +75,7 @@ def register_routes(app):
             "servers_missing_vault": missing,
             "lock_max_days": config.LOCK_MAX_DAYS,
             "lock_warning_days": config.LOCK_WARNING_DAYS,
+            "temp_password_min_length": config.TEMP_PASSWORD_MIN_LENGTH,
         }
 
     # --------------------------------------------------------------- home --
@@ -304,6 +321,10 @@ def register_routes(app):
             confirmation = request.form.get("temp_password_confirm", "")
             if not password or password != confirmation:
                 flash("Senha temporaria vazia ou nao confere com a confirmacao.", "danger")
+                return redirect(url_for("new_action_form"))
+            weak_points = temp_password_errors(password)
+            if weak_points:
+                flash("Senha temporaria fraca - falta: " + ", ".join(weak_points) + ".", "danger")
                 return redirect(url_for("new_action_form"))
             password_hashes = {row["username"]: sha512_crypt.hash(password)}
 

@@ -39,6 +39,10 @@ LEGACY_SERVERS_CONF = os.path.abspath(os.path.join(BASE_DIR, "..", "servidores.c
 LOCK_MAX_DAYS = 90
 LOCK_WARNING_DAYS = 80
 
+# Regras da senha temporaria de criacao de usuario (troca obrigatoria no
+# primeiro login, via chage -d 0 no proprio nexus_sanitize_users.sh).
+TEMP_PASSWORD_MIN_LENGTH = 10
+
 SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET", "nexus-dashboard-dev-secret")
 
 SCHEDULER_HOUR = 3
