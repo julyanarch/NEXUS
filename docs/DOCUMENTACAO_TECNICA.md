@@ -195,3 +195,22 @@ usuário) passam a refletir dados reais.
 | Reaproveitar `nexus_sanitize_users.sh` via Ansible `copy`+`command` | Reimplementar em módulos nativos do Ansible (`user`, etc.) | O script já tinha lógica testada (contas protegidas, hash de senha temporária, relatórios); reimplementar duplicaria risco sem ganho |
 | Senha de sudo por servidor (Ansible Vault, `host_vars`) | Uma senha global compartilhada | Servidores diferentes têm senhas de sudo diferentes na prática |
 | Identificação de operador simples (nome, sem senha) | Sistema de login completo | Fora do escopo pedido; suficiente para registro de auditoria interna |
+| Exclusão de servidor só permitida sem histórico; senão só "desabilitar" | Excluir sempre, sem checagem | Excluir um servidor com usuários/execuções já registrados apagaria/orfanaria a auditoria (a tela de Usuários usa `JOIN` com a tabela de servidores) |
+| Cadastro permite dois servidores com o mesmo host/IP e usuários SSH diferentes | Bloquear host duplicado | É um padrão válido no Ansible (contas de acesso diferentes numa mesma máquina física); o sistema só avisa, não bloqueia |
+
+---
+
+## 10. Perguntas frequentes durante os testes
+
+**"Cadastrei um servidor novo com o mesmo host de outro já existente, só que com usuário SSH
+diferente, e funcionou — isso está certo?"** Sim. Não há trava para host duplicado, só para nome
+duplicado — porque ter mais de uma "entrada" apontando pra mesma máquina física, cada uma com seu
+próprio usuário SSH (e sua própria senha de sudo no Vault), é uma situação legítima. O NEXUS agora
+avisa (sem bloquear) quando isso acontece, caso tenha sido sem querer.
+
+**"Por que só tem 'editar' e 'desabilitar' nos servidores, sem 'excluir'?"** Porque excluir de
+verdade um servidor que já tem usuários geridos ou ações registradas quebraria a auditoria (as
+telas de Usuários/Execuções dependem de conseguir achar o nome do servidor a partir do histórico).
+Por isso o NEXUS oferece **exclusão apenas para servidores sem histórico nenhum** (cadastros feitos
+por engano, por exemplo) — nesse caso aparece um botão "excluir". Quando já existe histórico, só
+"desabilitar" fica disponível, o que remove o servidor das ações futuras sem apagar o passado.
