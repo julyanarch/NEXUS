@@ -211,25 +211,26 @@ def register_routes(app):
         """Testa sozinho se o servidor precisa de senha de sudo e ja marca
         o resultado - o analista nao precisa checar manualmente."""
         detection = ansible_bridge.detect_sudo_nopasswd(name)
-        if detection == "nopasswd":
+        status = detection["status"]
+        if status == "nopasswd":
             models.set_server_sudo_nopasswd(server_id, True)
             flash(
                 f'Detectado automaticamente: "{name}" não pede senha de sudo (NOPASSWD) — '
                 "nenhuma configuração adicional necessária.",
                 "success",
             )
-        elif detection == "needs_password":
+        elif status == "needs_password":
             flash(
                 f'Detectado automaticamente: "{name}" pede senha de sudo. Configure em '
                 '"senha sudo" antes de executar ações nele.',
                 "warning",
             )
         else:
+            detail = (detection.get("detail") or "").strip()[-500:]
             flash(
-                f'Não foi possível detectar automaticamente se "{name}" pede senha de sudo '
-                "(confira se a chave SSH já está autorizada nesse servidor). Use o botão "
-                '"detectar" na lista de servidores para tentar de novo, ou configure a '
-                "senha manualmente.",
+                f'Não foi possível concluir a detecção automática em "{name}". '
+                f'Detalhe: {detail or "sem detalhe disponível"}. Use "detectar" na lista de '
+                "servidores para tentar de novo, ou configure a senha manualmente.",
                 "warning",
             )
 

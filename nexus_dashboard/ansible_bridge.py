@@ -73,14 +73,18 @@ def test_connection(server_name):
 def detect_sudo_nopasswd(server_name):
     """Testa via 'sudo -n true' se esse servidor exige senha de sudo.
 
-    Retorna "nopasswd" (sudo nao pede senha), "needs_password" (pede senha
-    de verdade) ou "unknown" (nao foi possivel testar - ex.: chave SSH ainda
-    nao autorizada, host inacessivel). Nunca arrisca ficar esperando um
-    prompt de senha: "sudo -n" falha na hora em vez de perguntar.
+    Retorna um dict {"status": ..., "detail": ...}. status e "nopasswd"
+    (sudo nao pede senha), "needs_password" (pede senha de verdade) ou
+    "unknown" (nao foi possivel concluir o teste - o "detail" sempre traz o
+    erro real do Ansible nesse caso, em vez de so um palpite). Nunca arrisca
+    ficar esperando um prompt de senha: "sudo -n" falha na hora em vez de
+    perguntar.
     """
     result = _run(PLAYBOOK_DETECT_SUDO, {"target_host": server_name})
+    stdout_tail = result["stdout"][-800:] if result["stdout"] else ""
+
     if not result["success"]:
-        return "unknown"
+        return {"status": "unknown", "detail": stdout_tail or "Falha ao conectar/executar no servidor."}
 
     for event in result["runner"].events:
         event_data = event.get("event_data", {})
@@ -88,10 +92,12 @@ def detect_sudo_nopasswd(server_name):
             res = event_data.get("res", {})
             rc = res.get("rc")
             if rc is None:
-                return "unknown"
-            return "nopasswd" if rc == 0 else "needs_password"
+                detail = res.get("msg") or res.get("stderr") or stdout_tail
+                return {"status": "unknown", "detail": detail}
+            status = "nopasswd" if rc == 0 else "needs_password"
+            return {"status": status, "detail": res.get("stderr", "")}
 
-    return "unknown"
+    return {"status": "unknown", "detail": stdout_tail or "Nao foi possivel interpretar o resultado do teste."}
 
 
 def _write_temp_csv(rows):
