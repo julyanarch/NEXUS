@@ -124,6 +124,41 @@ def toggle_server(server_id):
     conn.close()
 
 
+def find_servers_by_host(ssh_host, exclude_id=None):
+    """Outros servidores cadastrados com o mesmo host/IP (mesma maquina fisica,
+    possivelmente com outro usuario SSH) - usado so para avisar, nao bloqueia."""
+    conn = get_db()
+    if exclude_id is not None:
+        rows = conn.execute(
+            "SELECT * FROM servers WHERE ssh_host = ? AND id != ?", (ssh_host, exclude_id)
+        ).fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM servers WHERE ssh_host = ?", (ssh_host,)).fetchall()
+    conn.close()
+    return rows
+
+
+def server_has_history(server_id):
+    """True se ja existe algum usuario gerido ou linha de auditoria presa a esse
+    servidor - nesse caso, excluir de verdade apagaria rastro de auditoria."""
+    conn = get_db()
+    users_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM managed_users WHERE server_id = ?", (server_id,)
+    ).fetchone()["c"]
+    actions_count = conn.execute(
+        "SELECT COUNT(*) AS c FROM action_log WHERE server_id = ?", (server_id,)
+    ).fetchone()["c"]
+    conn.close()
+    return (users_count + actions_count) > 0
+
+
+def delete_server(server_id):
+    conn = get_db()
+    conn.execute("DELETE FROM servers WHERE id = ?", (server_id,))
+    conn.commit()
+    conn.close()
+
+
 # ---------------------------------------------------------- managed_users --
 
 USER_LIST_QUERY = """

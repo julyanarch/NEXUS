@@ -1,6 +1,7 @@
 import functools
 import os
 import secrets
+import shutil
 import subprocess
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -157,21 +158,37 @@ def register_routes(app):
     def list_servers():
         servers = models.list_servers()
         vault_status = {s["id"]: config.server_vault_configured(s["name"]) for s in servers}
-        return render_template("servers/list.html", servers=servers, vault_status=vault_status)
+        has_history = {s["id"]: models.server_has_history(s["id"]) for s in servers}
+        return render_template(
+            "servers/list.html", servers=servers, vault_status=vault_status, has_history=has_history,
+        )
+
+    def _warn_duplicate_host(ssh_host, exclude_id=None):
+        duplicates = models.find_servers_by_host(ssh_host, exclude_id=exclude_id)
+        if duplicates:
+            nomes = ", ".join(f'"{d["name"]}" ({d["ssh_user"]})' for d in duplicates)
+            flash(
+                f"Atencao: o host {ssh_host} ja esta cadastrado em outro(s) servidor(es): {nomes}. "
+                "Isso e permitido (contas diferentes na mesma maquina), mas confira se nao foi "
+                "duplicado por engano.",
+                "warning",
+            )
 
     @app.route("/servers/new", methods=["GET", "POST"])
     @require_operator
     def new_server():
         if request.method == "POST":
+            ssh_host = request.form["ssh_host"].strip()
             models.create_server(
                 request.form["name"].strip(),
-                request.form["ssh_host"].strip(),
+                ssh_host,
                 request.form["ssh_user"].strip(),
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
             )
             inventory_builder.rebuild_inventory()
             flash("Servidor cadastrado.", "success")
+            _warn_duplicate_host(ssh_host)
             return redirect(url_for("list_servers"))
         return render_template("servers/form.html", server=None)
 
@@ -180,18 +197,44 @@ def register_routes(app):
     def edit_server(server_id):
         server = models.get_server(server_id)
         if request.method == "POST":
+            ssh_host = request.form["ssh_host"].strip()
             models.update_server(
                 server_id,
                 request.form["name"].strip(),
-                request.form["ssh_host"].strip(),
+                ssh_host,
                 request.form["ssh_user"].strip(),
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
             )
             inventory_builder.rebuild_inventory()
             flash("Servidor atualizado.", "success")
+            _warn_duplicate_host(ssh_host, exclude_id=server_id)
             return redirect(url_for("list_servers"))
         return render_template("servers/form.html", server=server)
+
+    @app.route("/servers/<int:server_id>/delete", methods=["POST"])
+    @require_operator
+    def delete_server(server_id):
+        server = models.get_server(server_id)
+        if server is None:
+            flash("Servidor nao encontrado.", "danger")
+            return redirect(url_for("list_servers"))
+        if models.server_has_history(server_id):
+            flash(
+                f'"{server["name"]}" tem usuarios ou execucoes registradas e nao pode ser '
+                "excluido (perderia auditoria) - use \"desabilitar\" em vez disso.",
+                "danger",
+            )
+            return redirect(url_for("list_servers"))
+
+        vault_dir = config.host_vars_dir(server["name"])
+        if os.path.isdir(vault_dir):
+            shutil.rmtree(vault_dir)
+
+        models.delete_server(server_id)
+        inventory_builder.rebuild_inventory()
+        flash(f'Servidor "{server["name"]}" excluido.', "success")
+        return redirect(url_for("list_servers"))
 
     @app.route("/servers/<int:server_id>/toggle", methods=["POST"])
     @require_operator
