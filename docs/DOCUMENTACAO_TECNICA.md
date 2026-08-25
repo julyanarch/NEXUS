@@ -214,3 +214,16 @@ telas de Usuários/Execuções dependem de conseguir achar o nome do servidor a 
 Por isso o NEXUS oferece **exclusão apenas para servidores sem histórico nenhum** (cadastros feitos
 por engano, por exemplo) — nesse caso aparece um botão "excluir". Quando já existe histórico, só
 "desabilitar" fica disponível, o que remove o servidor das ações futuras sem apagar o passado.
+
+**"A senha temporária de criação de usuário não pedia nenhum requisito — e ela serve só pro
+primeiro login, certo?"** As duas coisas foram ajustadas/confirmadas:
+
+- **Requisitos de senha**: agora a senha temporária (tela Nova Ação → criar usuário) exige no
+  mínimo 10 caracteres, com letra maiúscula, letra minúscula e caractere especial. A validação
+  acontece nos dois lados: no navegador (feedback imediato) e no servidor Flask (é a que realmente
+  decide — nunca confie só na validação do navegador, ela pode ser contornada). O limite mínimo
+  fica em `config.TEMP_PASSWORD_MIN_LENGTH`, fácil de ajustar depois.
+- **Só serve para o primeiro login, sim.** O `nexus_sanitize_users.sh` roda `chage -d 0` no usuário
+  logo depois de definir essa senha — isso zera a data da última troca de senha, o que força o
+  Linux a exigir uma nova senha (definida pelo próprio usuário) no primeiro acesso via SSH. Depois
+  dessa troca, a senha temporária deixa de valer.
