@@ -19,6 +19,15 @@ PLAYBOOK_DETECT_SUDO = os.path.join(config.PLAYBOOKS_DIR, "detect_sudo.yml")
 LEGACY_SCRIPT_COPY = os.path.join(config.ANSIBLE_DIR, "files", "nexus_sanitize_users.sh")
 
 SECRET_LINE_PATTERN = re.compile(r"(pass(wo?rd)?|senha|secret|token|chave)", re.IGNORECASE)
+ANSI_ESCAPE_PATTERN = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _clean_detail(text):
+    """Remove codigos de cor ANSI e espacos sobrando, pra nunca mostrar
+    saida bruta cheia de */codigos de escape numa mensagem de erro."""
+    if not text:
+        return ""
+    return ANSI_ESCAPE_PATTERN.sub("", str(text)).strip()
 
 
 def sync_legacy_script():
@@ -70,34 +79,40 @@ def test_connection(server_name):
     return _run(PLAYBOOK_TEST, {"target_host": server_name})
 
 
+GENERIC_DETECTION_FAILURE = "Não foi possível conectar ou executar o teste nesse servidor."
+
+
 def detect_sudo_nopasswd(server_name):
     """Testa via 'sudo -n true' se esse servidor exige senha de sudo.
 
     Retorna um dict {"status": ..., "detail": ...}. status e "nopasswd"
     (sudo nao pede senha), "needs_password" (pede senha de verdade) ou
-    "unknown" (nao foi possivel concluir o teste - o "detail" sempre traz o
-    erro real do Ansible nesse caso, em vez de so um palpite). Nunca arrisca
-    ficar esperando um prompt de senha: "sudo -n" falha na hora em vez de
-    perguntar.
+    "unknown" (nao foi possivel concluir o teste). O "detail" e sempre uma
+    frase curta e limpa (nunca a saida bruta do Ansible, cheia de */codigos
+    de escape) - ou a frase generica acima, se nada de util for encontrado.
+    Nunca arrisca ficar esperando um prompt de senha: "sudo -n" falha na
+    hora em vez de perguntar.
     """
     result = _run(PLAYBOOK_DETECT_SUDO, {"target_host": server_name})
-    stdout_tail = result["stdout"][-800:] if result["stdout"] else ""
 
-    if not result["success"]:
-        return {"status": "unknown", "detail": stdout_tail or "Falha ao conectar/executar no servidor."}
-
+    unreachable_msg = ""
     for event in result["runner"].events:
         event_data = event.get("event_data", {})
-        if event_data.get("task") == "Testar sudo nao-interativo (sudo -n)":
-            res = event_data.get("res", {})
-            rc = res.get("rc")
-            if rc is None:
-                detail = res.get("msg") or res.get("stderr") or stdout_tail
-                return {"status": "unknown", "detail": detail}
-            status = "nopasswd" if rc == 0 else "needs_password"
-            return {"status": status, "detail": res.get("stderr", "")}
+        res = event_data.get("res", {})
 
-    return {"status": "unknown", "detail": stdout_tail or "Nao foi possivel interpretar o resultado do teste."}
+        if event.get("event") == "runner_on_unreachable" and not unreachable_msg:
+            unreachable_msg = _clean_detail(res.get("msg"))
+
+        if event_data.get("task") == "Testar sudo nao-interativo (sudo -n)":
+            rc = res.get("rc")
+            if rc is not None:
+                status = "nopasswd" if rc == 0 else "needs_password"
+                return {"status": status, "detail": _clean_detail(res.get("stderr"))}
+            task_msg = _clean_detail(res.get("msg") or res.get("stderr"))
+            if task_msg:
+                return {"status": "unknown", "detail": task_msg}
+
+    return {"status": "unknown", "detail": unreachable_msg or GENERIC_DETECTION_FAILURE}
 
 
 def _write_temp_csv(rows):
