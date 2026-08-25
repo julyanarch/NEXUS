@@ -10,6 +10,7 @@ from passlib.hash import sha512_crypt
 
 import ai_engine
 import ansible_bridge
+import charts
 import config
 import inventory_builder
 import models
@@ -89,7 +90,13 @@ def register_routes(app):
         ]
         recent_runs = models.list_recent_runs(limit=10)
         return render_template(
-            "dashboard.html", counts=counts, expiring_users=expiring_users, recent_runs=recent_runs
+            "dashboard.html", counts=counts, expiring_users=expiring_users, recent_runs=recent_runs,
+            status_chart=charts.build_status_chart(counts),
+            timeline_chart=charts.build_timeline_chart(),
+            server_chart=charts.build_server_chart(),
+            chart_color_magnitude=config.CHART_COLOR_MAGNITUDE,
+            chart_color_good=config.CHART_COLOR_GOOD,
+            chart_color_critical=config.CHART_COLOR_CRITICAL,
         )
 
     # ---------------------------------------------------------- operador --

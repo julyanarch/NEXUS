@@ -1,6 +1,6 @@
 import csv
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import config
 
@@ -324,6 +324,54 @@ def list_recent_runs(limit=100):
            LEFT JOIN servers s ON s.id = al.server_id
            ORDER BY al.performed_at DESC LIMIT ?""",
         (limit,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def daily_execution_counts(days=14):
+    """Execucoes (ok vs falha) por dia, para o grafico de linha do tempo do
+    Painel. Sempre retorna exatamente `days` dias (do mais antigo ao mais
+    recente), preenchendo com zero os dias sem nenhuma execucao."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT substr(performed_at, 1, 10) AS day,
+                  SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+                  SUM(CASE WHEN status != 'ok' THEN 1 ELSE 0 END) AS failed_count
+           FROM action_log
+           GROUP BY day"""
+    ).fetchall()
+    conn.close()
+
+    by_day = {r["day"]: (r["ok_count"], r["failed_count"]) for r in rows}
+    today = date.today()
+    result = []
+    for offset in range(days - 1, -1, -1):
+        day = today - timedelta(days=offset)
+        key = day.isoformat()
+        ok_count, failed_count = by_day.get(key, (0, 0))
+        result.append({
+            "day": key,
+            "label": day.strftime("%d/%m"),
+            "ok": ok_count,
+            "failed": failed_count,
+        })
+    return result
+
+
+def executions_per_server(days=30):
+    """Total de execucoes por servidor nos ultimos `days` dias, para o
+    grafico de magnitude do Painel. Inclui servidores sem nenhuma execucao
+    no periodo (aparecem com contagem zero)."""
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT s.name AS server_name, COUNT(al.id) AS total
+           FROM servers s
+           LEFT JOIN action_log al
+             ON al.server_id = s.id AND al.performed_at >= datetime('now', ?)
+           GROUP BY s.id
+           ORDER BY total DESC, s.name""",
+        (f"-{days} days",),
     ).fetchall()
     conn.close()
     return rows

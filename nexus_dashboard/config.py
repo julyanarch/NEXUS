@@ -43,6 +43,21 @@ LOCK_WARNING_DAYS = 80
 # primeiro login, via chage -d 0 no proprio nexus_sanitize_users.sh).
 TEMP_PASSWORD_MIN_LENGTH = 10
 
+# Cores dos graficos do Painel. Status (good/warning/critical) sao valores
+# fixos, validados para contraste >=3:1 contra o fundo dos cards (#1b1229) -
+# nao mudam com o tema. "neutral" e um cinza deliberado (sem carga de status)
+# para o estado "removido". "magnitude" e a cor unica (roxo) usada em graficos
+# de comparacao de volume (nao e status).
+CHART_COLOR_GOOD = "#0ca30c"
+CHART_COLOR_WARNING = "#fab219"
+CHART_COLOR_CRITICAL = "#d03b3b"
+CHART_COLOR_NEUTRAL = "#8a8a95"
+CHART_COLOR_MAGNITUDE = "#8b5cf6"
+
+TIMELINE_DAYS = 14
+TIMELINE_CHART_HEIGHT_PX = 80
+SERVER_CHART_WINDOW_DAYS = 30
+
 SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET", "nexus-dashboard-dev-secret")
 
 SCHEDULER_HOUR = 3

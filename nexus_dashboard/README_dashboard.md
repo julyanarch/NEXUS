@@ -97,6 +97,10 @@ configure port forwarding 5000→5000 nas configurações de rede do VirtualBox.
    externos): status, dias bloqueado/restantes até a remoção automática, grupos, criação
    (quando/quem), documentos vinculados e comandos executados (best-effort, via
    `~/.bash_history`).
+5. **Painel** — depois de algumas ações, mostra 3 gráficos: distribuição de usuários por status
+   (barra empilhada), execuções por dia nos últimos 14 dias (sucesso/falha) e execuções por
+   servidor nos últimos 30 dias. Passe o mouse sobre qualquer barra/segmento para ver o valor
+   exato.
 
 ## Expiração automática de contas bloqueadas
 

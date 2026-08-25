@@ -34,6 +34,75 @@
 </div>
 {% endif %}
 
+<div class="charts-grid">
+  <div class="card chart-card">
+    <h3>Usuários por status</h3>
+    {% if status_chart.total %}
+    <div class="dist-bar">
+      {% for seg in status_chart.segments %}
+      <div class="dist-seg" style="flex: {{ seg.count }} {{ seg.count }} 0; background: {{ seg.color }};"
+           title="{{ seg.label }}: {{ seg.count }}"></div>
+      {% endfor %}
+    </div>
+    <div class="chart-legend">
+      {% for seg in status_chart.segments %}
+      <div class="chart-legend-item">
+        <span class="chart-swatch" style="background: {{ seg.color }};"></span>{{ seg.label }} ({{ seg.count }})
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">Nenhum usuário gerido ainda.</p>
+    {% endif %}
+  </div>
+
+  <div class="card chart-card">
+    <h3>Execuções por servidor</h3>
+    <p class="chart-caption">últimos {{ server_chart.window_days }} dias</p>
+    {% if server_chart.bars %}
+      {% for b in server_chart.bars %}
+      <div class="server-bar-row">
+        <div class="server-bar-label">{{ b.name }}</div>
+        <div class="server-bar-track">
+          <div class="server-bar-fill" style="width: {{ b.width_pct }}%; background: {{ chart_color_magnitude }};"
+               title="{{ b.name }}: {{ b.total }} execução(ões)"></div>
+        </div>
+        <div class="server-bar-value">{{ b.total }}</div>
+      </div>
+      {% endfor %}
+    {% else %}
+    <p class="muted">Nenhum servidor cadastrado.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card chart-card">
+  <h3>Execuções por dia</h3>
+  <p class="chart-caption">
+    últimos {{ timeline_chart.columns|length }} dias
+    {% if timeline_chart.max_total %} · pico de {{ timeline_chart.max_total }} execução(ões) em um dia{% endif %}
+  </p>
+  {% if timeline_chart.max_total %}
+  <div class="timeline-chart" style="height: {{ timeline_chart.chart_height }}px;">
+    {% for col in timeline_chart.columns %}
+    <div class="timeline-col" title="{{ col.title }}">
+      {% if col.failed_px %}<div class="timeline-seg" style="height: {{ col.failed_px }}px; background: {{ chart_color_critical }};"></div>{% endif %}
+      {% if col.ok_px %}<div class="timeline-seg" style="height: {{ col.ok_px }}px; background: {{ chart_color_good }};"></div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="timeline-labels">
+    {% for col in timeline_chart.columns %}<span>{{ col.label }}</span>{% endfor %}
+  </div>
+  <div class="chart-legend">
+    <div class="chart-legend-item"><span class="chart-swatch" style="background: {{ chart_color_good }};"></span>Sucesso</div>
+    <div class="chart-legend-item"><span class="chart-swatch" style="background: {{ chart_color_critical }};"></span>Falha</div>
+  </div>
+  {% else %}
+  <p class="muted">Nenhuma execução registrada nos últimos {{ timeline_chart.columns|length }} dias.</p>
+  {% endif %}
+</div>
+
 <div class="card">
   <h3 style="margin-top:0;">Usuários bloqueados próximos da remoção automática</h3>
   {% if expiring_users %}
