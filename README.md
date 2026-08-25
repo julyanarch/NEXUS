@@ -1,13 +1,32 @@
 # NEXUS — Gestão de Usuários
 
-Conjunto de scripts para gestão de usuários (onboarding/offboarding) em servidores
-Linux. Os scripts geram evidências em TXT, JSON e CSV para auditoria e para
-consumo pela IA interna NEXUS.
+Conjunto de scripts e um dashboard web para gestão de usuários (onboarding/offboarding) em
+servidores Linux. Toda ação (criar, bloquear, remover, purgar) gera evidências em TXT, JSON, CSV
+e num banco de auditoria — **para fins de auditoria e de eventual investigação futura**, caso seja
+necessário reconstruir o que foi feito, quando, por quem e com qual justificativa/chamado.
 
-> Existe também um dashboard web (`nexus_dashboard/`) que executa este mesmo
-> fluxo via Ansible, com interface gráfica em vez de terminal/aliases e sem
-> pedir senha por servidor. Veja [nexus_dashboard/README_dashboard.md](nexus_dashboard/README_dashboard.md).
-> Este README documenta o fluxo original por terminal, que continua funcionando.
+> Existe um dashboard web (`nexus_dashboard/`) que executa este mesmo fluxo via Ansible, com
+> interface gráfica em vez de terminal/aliases, sem pedir senha por servidor — e é ali que vive a
+> IA integrada do projeto (veja a seção abaixo). Manual completo:
+> [nexus_dashboard/README_dashboard.md](nexus_dashboard/README_dashboard.md).
+> Este README documenta o projeto como um todo e o fluxo original por terminal, que continua
+> funcionando.
+
+## Onde entra a IA integrada
+
+A proposta do projeto inclui uma IA própria, embutida no dashboard — **não** é a IA interna da
+empresa (por isso o projeto se chama NEXUS, e não mais CORTEX, evitando essa confusão) e não é uma
+IA externa via API paga.
+
+É um motor de regras local (`nexus_dashboard/ai_engine.py`) que roda **dentro da aplicação em
+produção**: para cada usuário gerido, ele lê os dados já coletados (status, grupos/permissões,
+tempo bloqueado, criação, documentos vinculados, histórico de comandos) e gera, em tempo real, um
+resumo em português + fatos estruturados — exibido na página de detalhe do usuário, no painel
+"IA NEXUS". Não depende de nenhuma API externa: nenhum dado de usuário/servidor sai da máquina.
+
+O Ansible é uma camada separada, de automação/orquestração — não tem relação com a parte de IA.
+Ele só executa de verdade, nos servidores, as ações que a interface manda (criar/bloquear/remover
+usuário).
 
 ## Componentes
 
@@ -104,9 +123,12 @@ trocar a senha no primeiro login.
 
 Manual completo: [README_sanitize_users.md](README_sanitize_users.md)
 
-## Relatórios
+## Relatórios e evidências (onde fica o histórico de criação, bloqueio, remoção, etc.)
 
-Os scripts gravam os resultados em:
+Cada ação (criar, bloquear, remover, purgar) deixa rastro em **dois lugares diferentes**, ambos
+só para fins de auditoria/investigação futura — nenhum dos dois alimenta uma IA externa:
+
+**1. No próprio servidor gerido** (gravado pelo `nexus_sanitize_users.sh` ao executar):
 
 ```text
 /var/log/nexus/
@@ -115,10 +137,24 @@ Os scripts gravam os resultados em:
 Principais arquivos:
 
 ```text
-nexus_sanitize_users_HOST_DATA.txt
-nexus_sanitize_users_HOST_DATA.json
-nexus_sanitize_users_history.csv
+nexus_sanitize_users_HOST_DATA.txt      # relatório legivel da execucao
+nexus_sanitize_users_HOST_DATA.json     # mesmo relatorio, em JSON
+nexus_sanitize_users_history.csv        # historico acumulado de todas as execucoes nesse servidor
 ```
+
+**2. Na máquina ponte, se a execução foi feita pelo dashboard web** (`nexus_dashboard/`):
+
+```text
+nexus_dashboard/db/nexus.db                  # banco SQLite: tabela action_log = auditoria completa
+                                              # (quem, quando, o que, em qual servidor, resultado)
+nexus_dashboard/ansible/artifacts/<run_id>/  # saida bruta de cada execucao do Ansible, por execucao
+```
+
+A tabela `action_log` do banco é a fonte mais completa: junta o que aconteceu em todos os
+servidores num só lugar, com quem executou (`performed_by`), se foi manual ou automático
+(expiração de 90 dias), e o resultado. Ela alimenta as telas de **Usuários** e **Execuções** do
+dashboard, além do resumo da IA local descrito acima — mas o propósito é auditoria/investigação,
+não alimentar nenhuma IA externa.
 
 ## Segurança
 

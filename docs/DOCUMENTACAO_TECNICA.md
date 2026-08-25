@@ -227,3 +227,23 @@ primeiro login, certo?"** As duas coisas foram ajustadas/confirmadas:
   logo depois de definir essa senha — isso zera a data da última troca de senha, o que força o
   Linux a exigir uma nova senha (definida pelo próprio usuário) no primeiro acesso via SSH. Depois
   dessa troca, a senha temporária deixa de valer.
+
+**"Numa apresentação, se perguntarem 'onde entra a IA integrada nesse projeto', o que eu respondo?"**
+Resposta certa: **o `ai_engine.py`, dentro do `nexus_dashboard/`** — um motor de regras local que
+roda dentro da aplicação já em produção, lê os dados de cada usuário gerido (status, grupos, dias
+bloqueado, documentos, histórico de comandos) e gera em tempo real o resumo em português + fatos
+estruturados exibidos no painel "IA NEXUS" da página de detalhe do usuário. Não depende de API
+externa.
+
+O que **não** é a resposta: dizer que "a IA (o Claude, usado durante o desenvolvimento) + o
+Ansible fizeram a parte visual" — isso descreve *como o projeto foi construído* (uma ferramenta de
+desenvolvimento), não *o que o produto faz*. Ansible é automação/orquestração, sem relação com IA;
+ele só executa de verdade as ações nos servidores. A pergunta "onde entra a IA" é sobre uma
+funcionalidade do sistema em produção, e essa funcionalidade é o `ai_engine.py`.
+
+**"As evidências (TXT/JSON/histórico) alimentam uma IA interna já existente?"** Não, nunca
+alimentaram — isso era uma frase antiga do projeto original (CORTEX), corrigida no `README.md` e
+nos comentários dos scripts. O propósito dessas evidências é exclusivamente **auditoria e eventual
+investigação futura** (reconstruir o que foi feito, quando, por quem). A única coisa que lê esses
+dados "como uma IA" é o `ai_engine.py` do próprio NEXUS, e mesmo assim só os dados que já estão no
+banco (`nexus.db`), não os arquivos TXT/JSON do servidor remoto diretamente.

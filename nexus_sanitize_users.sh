@@ -5,7 +5,7 @@ set -Eeuo pipefail
 # NEXUS • Linux User Sanitizer
 # Objetivo: executar onboarding/offboarding de usuários Linux
 # Entrada: CSV exportado do chamado interno
-# Saída: relatório .txt + .json para auditoria e IA interna (NEXUS)
+# Saída: relatório .txt + .json para auditoria e investigação futura
 # ------------------------------------------------------------
 
 APP="nexus_sanitize_users"
