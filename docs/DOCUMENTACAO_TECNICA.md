@@ -247,3 +247,25 @@ nos comentários dos scripts. O propósito dessas evidências é exclusivamente 
 investigação futura** (reconstruir o que foi feito, quando, por quem). A única coisa que lê esses
 dados "como uma IA" é o `ai_engine.py` do próprio NEXUS, e mesmo assim só os dados que já estão no
 banco (`nexus.db`), não os arquivos TXT/JSON do servidor remoto diretamente.
+
+**"O Painel não tinha 'dashboards' de verdade — só números."** Os cartões numéricos e as tabelas já
+existiam, mas faltavam gráficos visuais mesmo (a proposta original pedia isso explicitamente).
+Foram adicionados 3 gráficos ao Painel, montados com HTML/CSS puro (sem biblioteca de gráficos
+externa, mesmo padrão da barra de progresso que já existia na página do usuário):
+
+- **Usuários por status** — barra empilhada horizontal (ativos/bloqueados/removidos).
+- **Execuções por dia** (últimos 14 dias) — barras empilhadas por dia, sucesso vs. falha.
+- **Execuções por servidor** (últimos 30 dias) — barras horizontais de magnitude.
+
+Decisões de design (para não reintroduzir sem querer se alguém pedir "mais gráficos" depois):
+- **Nenhum gráfico de pizza.** O pedido original mencionava "pizza, barras, linha do tempo", mas
+  pizza é a forma errada para "distribuição de status" e é desencorajada para comparar valores
+  próximos — usamos barra empilhada no lugar (mesma ideia de parte-do-todo, mais legível).
+- **Cores de status são fixas e reservadas**: verde (`#0ca30c`) = bom/ativo/sucesso, âmbar
+  (`#fab219`) = atenção/bloqueado, vermelho (`#d03b3b`) = crítico/falha, cinza (`#8a8a95`) =
+  neutro/removido. Essas cores nunca devem ser reaproveitadas para outra coisa (ex.: não usar
+  vermelho para "servidor X" num gráfico categórico — isso confundiria com "erro").
+- **Execuções por servidor usa uma única cor** (roxo, `#8b5cf6`) porque é comparação de magnitude
+  (volume), não identidade — colorir cada servidor diferente aqui seria ruído, não informação.
+- Todas as cores foram validadas para contraste >=3:1 contra o fundo dos cards antes de ir para o
+  código (ver `nexus_dashboard/config.py`, constantes `CHART_COLOR_*`).
