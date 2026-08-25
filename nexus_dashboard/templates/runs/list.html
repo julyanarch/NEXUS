@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><h1>Execuções</h1></div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Quando</th><th>Usuário</th><th>Ação</th><th>Modo</th><th>Status</th><th>Origem</th><th>Por</th></tr>
+    </thead>
+    <tbody>
+      {% for r in runs %}
+      <tr>
+        <td>{{ r.performed_at }}</td>
+        <td>{{ r.username or '-' }}</td>
+        <td>{{ r.action }}</td>
+        <td>{{ r.mode }}</td>
+        <td><span class="badge badge-{{ 'active' if r.status == 'ok' else 'danger' }}">{{ r.status }}</span></td>
+        <td><span class="badge badge-{{ r.triggered_by }}">{{ 'automático' if r.triggered_by == 'automatic' else 'manual' }}</span></td>
+        <td>{{ r.performed_by }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Nenhuma execução registrada.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>NEXUS · Gestão de Usuários{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">NEXUS<span>.</span></div>
+      <div class="brand-sub">Gestão de Usuários</div>
+
+      <a class="nav-link {{ 'active' if request.path == '/' }}" href="{{ url_for('dashboard') }}">Painel</a>
+      <a class="nav-link {{ 'active' if request.path.startswith('/users') }}" href="{{ url_for('list_users') }}">Usuários</a>
+      <a class="nav-link {{ 'active' if request.path.startswith('/actions') }}" href="{{ url_for('new_action_form') }}">Nova Ação</a>
+      <a class="nav-link {{ 'active' if request.path.startswith('/servers') }}" href="{{ url_for('list_servers') }}">Servidores</a>
+      <a class="nav-link {{ 'active' if request.path.startswith('/runs') }}" href="{{ url_for('list_runs') }}">Execuções</a>
+      <a class="nav-link {{ 'active' if request.path.startswith('/setup') }}" href="{{ url_for('setup_vault') }}">Configuração (Vault)</a>
+
+      <div class="operator-box">
+        {% if operator_name %}
+          Operador: <strong>{{ operator_name }}</strong><br>
+          <a href="{{ url_for('set_operator') }}">trocar</a>
+        {% else %}
+          <a href="{{ url_for('set_operator') }}">Identificar operador</a>
+        {% endif %}
+        <br>
+        {% if vault_configured %}
+          <span style="color: var(--ok);">Vault configurado</span>
+        {% else %}
+          <span style="color: var(--danger);">Vault não configurado</span>
+        {% endif %}
+      </div>
+    </aside>
+
+    <main class="main">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

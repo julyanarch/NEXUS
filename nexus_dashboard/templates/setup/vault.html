@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><h1>Configuração do Ansible Vault</h1></div>
+
+<div class="card" style="max-width:560px;">
+  <p>
+    Esta senha é a senha de <code>sudo</code> usada nos servidores gerenciados. Ela é gravada
+    criptografada (Ansible Vault) e usada automaticamente em toda execução — <strong>nenhum
+    prompt de senha</strong> será exibido depois desta configuração.
+  </p>
+  <p class="muted">
+    Pré-requisito: as chaves SSH da máquina ponte já devem estar autorizadas nos servidores
+    (<code>ssh-copy-id</code>), como descrito no README original do projeto.
+  </p>
+  <form method="post">
+    <div class="form-group">
+      <label>Senha de sudo (become) para os servidores gerenciados</label>
+      <input type="password" name="become_password" required>
+    </div>
+    <button class="btn" type="submit">Salvar no Vault</button>
+  </form>
+  {% if vault_configured %}
+  <p style="margin-top:14px; color: var(--ok);">Vault já configurado. Salvar novamente substitui a senha atual.</p>
+  {% endif %}
+</div>
+{% endblock %}

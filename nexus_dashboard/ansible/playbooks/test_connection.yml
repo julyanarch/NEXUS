@@ -1,0 +1,17 @@
+---
+# NEXUS Dashboard - botao "Testar conexao"
+# Substitui `nexus_remote.sh test`. Autenticacao 100% por chave SSH,
+# sem qualquer prompt de senha.
+- name: NEXUS - Testar conexao
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Verificar conectividade e identidade remota
+      ansible.builtin.command: "id -un"
+      register: whoami_result
+      changed_when: false
+
+    - name: Exibir resultado
+      ansible.builtin.debug:
+        msg: "Conectado como {{ whoami_result.stdout }} em {{ inventory_hostname }}"

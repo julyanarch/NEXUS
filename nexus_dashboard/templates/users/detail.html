@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1>{{ user.username }} <span class="badge badge-{{ user.status }}">{{ user.status }}</span></h1>
+  <div>
+    <form style="display:inline" method="post" action="{{ url_for('collect_history', user_id=user.id) }}">
+      <button class="btn btn-outline" type="submit">Coletar histórico de comandos</button>
+    </form>
+    {% if user.status != 'removed' %}
+    <form style="display:inline" method="post" action="{{ url_for('force_removal', user_id=user.id) }}"
+          data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?">
+      <button class="btn btn-danger" type="submit">Forçar remoção agora</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="ai-panel">
+  <div class="ai-label">IA NEXUS · resumo automático</div>
+  <h3>Sobre este usuário</h3>
+  <p>{{ insights.summary_pt_br }}</p>
+</div>
+
+<div class="card" style="margin-top:20px;">
+  <h3 style="margin-top:0;">Fatos</h3>
+  <div class="stat-row">
+    <div class="stat"><div class="value">{{ user.server_name }}</div><div class="label">Servidor</div></div>
+    <div class="stat"><div class="value">{{ insights.created_by }}</div><div class="label">Criado por</div></div>
+    <div class="stat"><div class="value">{{ insights.created_at }}</div><div class="label">Criado em</div></div>
+    <div class="stat"><div class="value">{{ insights.created_ticket or '-' }}</div><div class="label">Chamado de criação</div></div>
+  </div>
+  {% if user.ticket and user.ticket != insights.created_ticket %}
+  <p class="muted">Chamado/motivo da ação mais recente: {{ user.ticket }}{% if user.reason %} ({{ user.reason }}){% endif %}</p>
+  {% endif %}
+
+  {% if user.status == 'locked' %}
+  <div style="margin-top:10px;">
+    <div class="muted">Dias bloqueado: {{ insights.days_locked }} / {{ lock_max_days }} — restam {{ insights.days_remaining }} dia(s) até a remoção automática</div>
+    <div class="progress {{ 'urgent' if insights.urgency }}">
+      <div style="width: {{ (insights.days_locked / lock_max_days * 100) | round(1) }}%;"></div>
+    </div>
+  </div>
+  {% elif user.status == 'removed' %}
+  <p class="muted">
+    Removido em {{ insights.removed_at }} por {{ insights.removed_by }}
+    — <span class="badge badge-{{ insights.removal_type }}">{{ 'automático' if insights.removal_type == 'automatic' else 'manual' }}</span>
+  </p>
+  {% endif %}
+
+  <p style="margin-top:14px;"><strong>Permissões/grupos:</strong>
+    {% if insights.groups %}{{ insights.groups | join(', ') }}{% else %}<span class="muted">nenhum grupo adicional</span>{% endif %}
+  </p>
+  <p><strong>Shell:</strong> {{ user.shell or '-' }}</p>
+  <p><strong>Motivo:</strong> {{ user.reason or '-' }}</p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Comandos executados (best-effort)</h3>
+  {% if insights.commands.status == 'ok' and insights.commands.items %}
+    <p class="muted">Coletado em {{ insights.commands.collected_at }}. Histórico não é garantia total (pode estar incompleto).</p>
+    <pre>{{ insights.commands.items | join('\n') }}</pre>
+  {% else %}
+    <p class="muted">
+      {% if insights.commands.status == 'empty' %}Histórico vazio ou desativado no servidor.
+      {% elif insights.commands.status == 'no_access' %}Arquivo de histórico não encontrado para este usuário.
+      {% elif insights.commands.status == 'error' %}Falha ao coletar o histórico.
+      {% else %}Histórico ainda não coletado. Use o botão "Coletar histórico de comandos".{% endif %}
+    </p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Documentos vinculados</h3>
+  {% if documents %}
+  <table>
+    <thead><tr><th>Tipo</th><th>Referência</th><th>Descrição</th><th>Enviado por</th><th>Quando</th></tr></thead>
+    <tbody>
+      {% for d in documents %}
+      <tr>
+        <td>{{ d.doc_type }}</td>
+        <td>{{ d.reference }}</td>
+        <td>{{ d.description or '-' }}</td>
+        <td>{{ d.uploaded_by }}</td>
+        <td>{{ d.uploaded_at }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhum documento vinculado ainda.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('add_document', user_id=user.id) }}" class="form-grid" style="margin-top:14px;">
+    <div class="form-group">
+      <label>Tipo</label>
+      <select name="doc_type">
+        <option value="ticket_ref">Referência de chamado</option>
+        <option value="uploaded_file">Arquivo (caminho/nome)</option>
+        <option value="note">Nota</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Referência</label>
+      <input type="text" name="reference" required placeholder="ex.: CHG1002 ou nome do arquivo">
+    </div>
+    <div class="form-group">
+      <label>Descrição</label>
+      <input type="text" name="description">
+    </div>
+    <div class="form-group" style="align-self:end;"><button class="btn" type="submit">Vincular</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Linha do tempo de ações</h3>
+  <ul class="timeline">
+    {% for t in timeline %}
+    <li>
+      <strong>{{ t.action }}</strong> ({{ t.mode }}) —
+      <span class="badge badge-{{ 'active' if t.status == 'ok' else 'danger' }}">{{ t.status }}</span>
+      <span class="badge badge-{{ t.triggered_by }}">{{ 'automático' if t.triggered_by == 'automatic' else 'manual' }}</span>
+      <div class="muted">{{ t.performed_at }} · por {{ t.performed_by }}</div>
+      {% if t.message %}<div class="muted">{{ t.message[:300] }}</div>{% endif %}
+    </li>
+    {% else %}
+    <li class="muted">Nenhuma ação registrada ainda.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

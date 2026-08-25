@@ -1,0 +1,117 @@
+#smp que alterar o código no vscode para atualizar na vm, rodar:
+
+cd /media/sf_vm_pasta_compartilhada
+sudo cp nexus_sanitize_users.sh /opt/
+sudo /opt/nexus_sanitize_users.sh --csv /opt/usuarios.csv --dry-run
+----------------------------------------------------------------------------------------------------------
+---------------------- FLUXO COMO RODAR O PROJETO--------------------------------------------------------
+---------------------------------------------------------------------------------------------------------
+CRIAR O USUÁRIO TESTE:
+
+
+ vim usuarios.csv
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+VERIFICAR HISTÓRIO DO CSV:
+
+sudo cat /var/log/nexus/nexus_sanitize_users_history.csv
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+
+TESTE:
+sudo /opt/nexus_sanitize_users.sh --csv /opt/usuarios.csv --dry-run
+ALIAS:
+nexus-users-dry
+
+APLICAR:
+sudo /opt/nexus_sanitize_users.sh --csv /opt/usuarios.csv --apply
+ALIAS:
+nexus-users-apply
+
+Ao processar action=create em modo apply:
+- o script pede a senha temporaria de forma oculta;
+- pede a confirmacao da senha;
+- nao registra a senha no CSV, JSON ou historico;
+- obriga o usuario a trocar a senha no primeiro login.
+
+CONTROLADOR REMOTO:
+sudo cp nexus_remote.sh servidores.conf /opt/
+sudo chmod 755 /opt/nexus_remote.sh
+sudo chmod 644 /opt/servidores.conf
+bash -n /opt/nexus_remote.sh
+
+ALIASES REMOTOS:
+alias nexus-servers='/opt/nexus_remote.sh list'
+alias nexus-remote-test='/opt/nexus_remote.sh test'
+alias nexus-remote-logs='/opt/nexus_remote.sh logs'
+alias nexus-remote-users-dry='/opt/nexus_remote.sh users-dry'
+alias nexus-remote-users-apply='/opt/nexus_remote.sh users-apply'
+
+TESTE REMOTO:
+nexus-servers
+nexus-remote-test teste-01
+nexus-remote-users-dry teste-01
+nexus-remote-users-apply teste-01
+
+# No apply remoto, a senha e digitada de forma oculta na ponte.
+# Somente o hash SHA-512 e enviado pelo SSH e apagado ao final.
+# Requisito na ponte: openssl
+----------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------
+
+VERIFICAR LOGS:
+nexus-logs
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Resumo: o sanitize_users trata usuários via CSV, criando/bloqueando/removendo
+contas Linux e gerando relatorios TXT/JSON + historico CSV para auditoria.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DASHBOARD WEB (nexus_dashboard/):
+- mesmo fluxo acima, porem via interface grafica (botoes) em vez de terminal;
+- usa Ansible + Ansible Vault no lugar do SSH manual, sem pedir senha por servidor;
+- IA local (sem API externa) resume cada usuario: permissoes, dias bloqueado,
+  quem/quando criou, documentos vinculados, comandos executados (best-effort);
+- contas bloqueadas sao removidas automaticamente apos 90 dias.
+Ver nexus_dashboard/README_dashboard.md para rodar.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# ============================================================
+# MODELO DE PREENCHIMENTO - NEXUS USER SANITIZER
+# ============================================================
+#
+# username:
+#   Nome do usuário Linux.
+#   Exemplo: joao.silva
+#
+# action:
+#   create = cria o usuário
+#   add    = cria o usuário
+#   lock   = bloqueia a conta
+#   remove = remove o usuário
+#   purge  = remove o usuário e apaga a home
+#
+# home:
+#   create: yes cria home, no não cria home
+#   remove: yes apaga a home, no mantém a home
+#
+# reason:
+#   Motivo da ação. Não usar vírgula.
+#
+# ticket:
+#   Número do chamado interno.
+#
+# groups:
+#   Grupos adicionais separados por ponto e vírgula.
+#   Exemplo: sudo;docker
+#
+# shell:
+#   Shell do usuário.
+#   Exemplo: /bin/bash
+#
+# EXEMPLO:
+# username,action,home,reason,ticket,groups,shell
+# rebeca,create,yes,admissao,CHG1001,sudo,/bin/bash
+# usuario_teste,remove,yes,desligamento,CHG0001,,
+#
+# ============================================================

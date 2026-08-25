@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1>Usuários</h1>
+  <a class="btn" href="{{ url_for('new_action_form') }}">+ Nova ação</a>
+</div>
+
+<div class="card">
+  <form method="get" class="form-grid" style="align-items:end;">
+    <div class="form-group">
+      <label>Status</label>
+      <select name="status" onchange="this.form.submit()">
+        <option value="" {{ 'selected' if not status }}>Todos</option>
+        <option value="active" {{ 'selected' if status == 'active' }}>Ativos</option>
+        <option value="locked" {{ 'selected' if status == 'locked' }}>Bloqueados</option>
+        <option value="removed" {{ 'selected' if status == 'removed' }}>Removidos</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Buscar (usuário/chamado)</label>
+      <input type="text" name="q" value="{{ search }}">
+    </div>
+    <div class="form-group"><button class="btn" type="submit">Filtrar</button></div>
+  </form>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr><th>Usuário</th><th>Servidor</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.server_name }}</td>
+        <td><span class="badge badge-{{ u.status }}">{{ u.status }}</span></td>
+        <td>{{ u.days_locked if u.status == 'locked' else '-' }}</td>
+        <td>{{ u.ticket or '-' }}</td>
+        <td>{{ u.created_at }}</td>
+        <td><a href="{{ url_for('user_detail', user_id=u.id) }}">detalhes / IA</a></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="muted">Nenhum usuário encontrado.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

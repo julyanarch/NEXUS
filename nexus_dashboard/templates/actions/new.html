@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><h1>Nova ação de usuário</h1></div>
+
+<div class="card">
+  <form method="post" data-confirm="Confirmar execução desta ação?">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nome / usuário Linux</label>
+        <input type="text" name="username" required placeholder="ex.: joao.silva">
+      </div>
+      <div class="form-group">
+        <label>Chamado</label>
+        <input type="text" name="ticket" placeholder="ex.: CHG1002">
+      </div>
+      <div class="form-group">
+        <label>Ação</label>
+        <select id="action_select" name="action" required>
+          <option value="create">Criar (create)</option>
+          <option value="lock">Bloquear (lock)</option>
+          <option value="remove">Remover, mantém home (remove)</option>
+          <option value="purge">Remover e apagar home (purge)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Motivo</label>
+        <input type="text" name="reason" placeholder="ex.: admissao, afastamento, desligamento">
+      </div>
+      <div class="form-group">
+        <label>Grupos (separados por ;)</label>
+        <input type="text" name="groups" placeholder="ex.: sudo;docker">
+      </div>
+      <div class="form-group">
+        <label>Shell</label>
+        <input type="text" name="shell" value="/bin/bash">
+      </div>
+      <div class="form-group">
+        <label>Home (yes cria/apaga, no mantém)</label>
+        <select name="home">
+          <option value="yes">yes</option>
+          <option value="no">no</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="password_group" class="form-grid" style="display:none;">
+      <div class="form-group">
+        <label>Senha temporária (apenas para criação, na hora de Aplicar)</label>
+        <input type="password" name="temp_password">
+      </div>
+      <div class="form-group">
+        <label>Confirmar senha temporária</label>
+        <input type="password" name="temp_password_confirm">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Servidores de destino</label>
+      <div class="checkbox-list">
+        {% for s in servers %}
+        <label>
+          <input type="checkbox" class="js-server-check" name="server_ids" value="{{ s.id }}" {{ 'disabled' if not s.enabled }}>
+          {{ s.name }} ({{ s.ssh_host }}){{ ' - desabilitado' if not s.enabled }}
+        </label>
+        {% else %}
+        <span class="muted">Nenhum servidor cadastrado. <a href="{{ url_for('new_server') }}">Cadastrar</a>.</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="bulk_confirmation_group" class="form-group" style="display:none;">
+      <label>Confirmação para múltiplos servidores — digite APLICAR</label>
+      <input type="text" name="bulk_confirmation">
+    </div>
+
+    <button class="btn btn-outline" type="submit" formaction="{{ url_for('action_dry_run') }}">Simular (dry-run)</button>
+    <button class="btn" type="submit" formaction="{{ url_for('action_apply') }}">Aplicar</button>
+  </form>
+</div>
+{% endblock %}

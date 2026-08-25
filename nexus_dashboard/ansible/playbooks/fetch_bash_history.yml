@@ -1,0 +1,28 @@
+---
+# NEXUS Dashboard - coleta best-effort do historico de comandos do usuario
+# (~/.bash_history). Usado pelo botao "Coletar historico" na pagina de
+# detalhe do usuario, alimenta a IA local (ai_engine.py).
+#
+# Limitacoes conhecidas (documentadas na UI, nao escondidas do operador):
+#   - historico pode estar vazio, desativado (HISTSIZE=0) ou limpo (history -c);
+#   - sessoes ainda abertas so gravam o arquivo ao fechar o shell;
+#   - assume shell bash com home em /home/<usuario> (padrao do useradd usado
+#     pelo nexus_sanitize_users.sh).
+#
+# extra-vars esperadas: target_host, target_username
+
+- name: NEXUS - Coletar historico de comandos (best-effort)
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Verificar se o arquivo de historico existe
+      ansible.builtin.stat:
+        path: "/home/{{ target_username }}/.bash_history"
+      register: history_stat
+
+    - name: Ler o arquivo de historico (quando existir)
+      ansible.builtin.slurp:
+        src: "/home/{{ target_username }}/.bash_history"
+      register: history_slurp
+      when: history_stat.stat.exists

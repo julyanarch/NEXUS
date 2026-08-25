@@ -1,0 +1,26 @@
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs e saidas locais
+*.log
+nexus_sanitize_users_*.txt
+nexus_sanitize_users_*.json
+
+# CSVs de chamados podem conter dados sensiveis
+*.csv
+
+# NEXUS Dashboard - segredos e dados runtime, nunca versionar
+nexus_dashboard/db/*.db
+nexus_dashboard/ansible/.vault_pass
+nexus_dashboard/ansible/group_vars/all/vault.yml
+nexus_dashboard/ansible/inventory/hosts.yml
+nexus_dashboard/ansible/artifacts/
+

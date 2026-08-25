@@ -1,0 +1,84 @@
+---
+# NEXUS Dashboard - executa o nexus_sanitize_users.sh reaproveitado, sem
+# alteracoes, no servidor remoto. Substitui `nexus_remote.sh users-dry` /
+# `users-apply`. A senha de sudo vem do Ansible Vault (ansible_become_pass),
+# nunca e solicitada aqui.
+#
+# extra-vars esperadas:
+#   target_host              nome do host/grupo no inventario
+#   mode                      "dry-run" ou "apply"
+#   sanitizer_script_local_path   caminho local do script (controller)
+#   csv_local_path                caminho local do CSV com a(s) linha(s) de acao
+#   artifacts_local_dir           pasta local onde salvar o relatorio JSON coletado
+#   password_hash_local_path      (opcional) arquivo local "username:hash"
+
+- name: NEXUS - Sanitizar usuarios
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: no
+  vars:
+    has_password_hashes: "{{ password_hash_local_path is defined and password_hash_local_path | length > 0 }}"
+  tasks:
+    - name: Criar diretorio temporario protegido no servidor remoto
+      ansible.builtin.shell: "umask 077; mktemp -d /tmp/nexus-dash.XXXXXX"
+      register: remote_tmp
+      changed_when: false
+
+    - name: Definir caminho remoto temporario
+      ansible.builtin.set_fact:
+        remote_tmp_dir: "{{ remote_tmp.stdout }}"
+
+    - name: Copiar script sanitizer (reaproveitado sem alteracoes)
+      ansible.builtin.copy:
+        src: "{{ sanitizer_script_local_path }}"
+        dest: "{{ remote_tmp_dir }}/nexus_sanitize_users.sh"
+        mode: "0700"
+
+    - name: Copiar CSV da acao
+      ansible.builtin.copy:
+        src: "{{ csv_local_path }}"
+        dest: "{{ remote_tmp_dir }}/action.csv"
+        mode: "0600"
+
+    - name: Copiar hashes de senha temporaria (quando houver criacao de usuario)
+      ansible.builtin.copy:
+        src: "{{ password_hash_local_path }}"
+        dest: "{{ remote_tmp_dir }}/password_hashes"
+        mode: "0600"
+      when: has_password_hashes
+
+    - name: "Executar o sanitizer (modo: {{ mode }})"
+      ansible.builtin.command: >
+        bash {{ remote_tmp_dir }}/nexus_sanitize_users.sh
+        --csv {{ remote_tmp_dir }}/action.csv
+        --{{ mode }}
+        --no-history
+        {{ ('--password-hashes ' + remote_tmp_dir + '/password_hashes') if has_password_hashes else '' }}
+      become: yes
+      register: sanitize_result
+      changed_when: mode == 'apply'
+      failed_when: false
+
+    - name: Localizar o relatorio JSON mais recente gerado pelo sanitizer
+      ansible.builtin.shell: "ls -1t /var/log/nexus/nexus_sanitize_users_*.json 2>/dev/null | head -n 1"
+      register: remote_json_path
+      changed_when: false
+      become: yes
+
+    - name: Copiar relatorio JSON para a pasta de artefatos local
+      ansible.builtin.fetch:
+        src: "{{ remote_json_path.stdout }}"
+        dest: "{{ artifacts_local_dir }}/{{ inventory_hostname }}_sanitize.json"
+        flat: yes
+      become: yes
+      when: remote_json_path.stdout | length > 0
+
+    - name: Remover diretorio temporario remoto
+      ansible.builtin.file:
+        path: "{{ remote_tmp_dir }}"
+        state: absent
+
+    - name: Falhar a execucao caso o sanitizer tenha retornado erro
+      ansible.builtin.fail:
+        msg: "nexus_sanitize_users.sh terminou com codigo {{ sanitize_result.rc }}: {{ sanitize_result.stdout }}"
+      when: sanitize_result.rc != 0

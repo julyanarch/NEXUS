@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <h1>Painel</h1>
+  <a class="btn" href="{{ url_for('new_action_form') }}">+ Nova ação</a>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="value">{{ counts.active }}</div>
+    <div class="label">Usuários ativos</div>
+  </div>
+  <div class="summary-card">
+    <div class="value">{{ counts.locked }}</div>
+    <div class="label">Bloqueados</div>
+  </div>
+  <div class="summary-card">
+    <div class="value">{{ counts.expiring_soon }}</div>
+    <div class="label">Expirando em breve (&ge; {{ lock_warning_days }}d)</div>
+  </div>
+  <div class="summary-card">
+    <div class="value">{{ counts.removed }}</div>
+    <div class="label">Removidos</div>
+  </div>
+</div>
+
+{% if not vault_configured %}
+<div class="card">
+  <strong>Configuração pendente:</strong> o Ansible Vault ainda não foi configurado.
+  <a href="{{ url_for('setup_vault') }}">Configurar agora</a> para liberar testes de conexão e execução de ações
+  sem pedidos de senha por servidor.
+</div>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0;">Usuários bloqueados próximos da remoção automática</h3>
+  {% if expiring_users %}
+  <table>
+    <thead><tr><th>Usuário</th><th>Servidor</th><th>Dias bloqueado</th><th>Dias restantes</th><th></th></tr></thead>
+    <tbody>
+      {% for u in expiring_users %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.server_name }}</td>
+        <td>{{ u.days_locked }}</td>
+        <td>{{ lock_max_days - (u.days_locked or 0) }}</td>
+        <td><a href="{{ url_for('user_detail', user_id=u.id) }}">ver detalhes</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhum usuário bloqueado próximo do limite de {{ lock_max_days }} dias.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Execuções recentes</h3>
+  {% if recent_runs %}
+  <table>
+    <thead><tr><th>Quando</th><th>Usuário</th><th>Ação</th><th>Modo</th><th>Status</th><th>Por</th></tr></thead>
+    <tbody>
+      {% for r in recent_runs %}
+      <tr>
+        <td>{{ r.performed_at }}</td>
+        <td>{{ r.username }}</td>
+        <td>{{ r.action }}</td>
+        <td>{{ r.mode }}</td>
+        <td><span class="badge badge-{{ 'active' if r.status == 'ok' else 'danger' }}">{{ r.status }}</span></td>
+        <td>{{ r.performed_by }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nenhuma execução registrada ainda.</p>
+  {% endif %}
+</div>
+{% endblock %}

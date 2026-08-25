@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><h1>{{ 'Editar servidor' if server else 'Novo servidor' }}</h1></div>
+
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" name="name" value="{{ server.name if server else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label>Usuário SSH</label>
+      <input type="text" name="ssh_user" value="{{ server.ssh_user if server else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label>Host / IP</label>
+      <input type="text" name="ssh_host" value="{{ server.ssh_host if server else '' }}" required>
+    </div>
+    <div class="form-group">
+      <label>Porta SSH</label>
+      <input type="number" name="ssh_port" value="{{ server.ssh_port if server else 22 }}" required>
+    </div>
+    <div class="form-group">
+      <label><input type="checkbox" name="enabled" {{ 'checked' if (server is none) or server.enabled }}> Habilitado</label>
+    </div>
+    <button class="btn" type="submit">Salvar</button>
+    <a class="btn btn-outline" href="{{ url_for('list_servers') }}">Cancelar</a>
+  </form>
+</div>
+{% endblock %}
