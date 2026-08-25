@@ -44,10 +44,16 @@ def require_operator(view_func):
     return wrapped
 
 
+def server_ready_for_actions(server):
+    """True se o servidor pode receber acoes agora - ou tem senha de sudo
+    configurada, ou foi marcado como NOPASSWD (nao precisa de senha)."""
+    return bool(server["sudo_nopasswd"]) or config.server_vault_configured(server["name"])
+
+
 def servers_missing_vault():
     return [
         s for s in models.list_servers()
-        if s["enabled"] and not config.server_vault_configured(s["name"])
+        if s["enabled"] and not server_ready_for_actions(s)
     ]
 
 
@@ -187,6 +193,9 @@ def register_routes(app):
             "servers/list.html", servers=servers, vault_status=vault_status, has_history=has_history,
         )
 
+    def _sudo_nopasswd_from_form():
+        return request.form.get("sudo_nopasswd") == "on"
+
     def _warn_duplicate_host(ssh_host, exclude_id=None):
         duplicates = models.find_servers_by_host(ssh_host, exclude_id=exclude_id)
         if duplicates:
@@ -209,6 +218,7 @@ def register_routes(app):
                 request.form["ssh_user"].strip(),
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
+                sudo_nopasswd=_sudo_nopasswd_from_form(),
             )
             inventory_builder.rebuild_inventory()
             flash("Servidor cadastrado.", "success")
@@ -229,6 +239,7 @@ def register_routes(app):
                 request.form["ssh_user"].strip(),
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
+                sudo_nopasswd=_sudo_nopasswd_from_form(),
             )
             inventory_builder.rebuild_inventory()
             flash("Servidor atualizado.", "success")
@@ -313,7 +324,7 @@ def register_routes(app):
             return redirect(url_for("new_action_form"))
 
         target_servers = [models.get_server(sid) for sid in server_ids]
-        missing = [s["name"] for s in target_servers if not config.server_vault_configured(s["name"])]
+        missing = [s["name"] for s in target_servers if not server_ready_for_actions(s)]
         if missing:
             flash(
                 "Configure a senha de sudo antes de executar acoes nestes servidores: "
@@ -434,7 +445,7 @@ def register_routes(app):
     @require_operator
     def collect_history(user_id):
         user = models.get_user(user_id)
-        if not config.server_vault_configured(user["server_name"]):
+        if not server_ready_for_actions(models.get_server(user["server_id"])):
             flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de coletar historico.', "warning")
             return redirect(url_for("user_detail", user_id=user_id))
         result = ansible_bridge.fetch_bash_history(user["server_name"], user["username"])
@@ -446,7 +457,7 @@ def register_routes(app):
     @require_operator
     def force_removal(user_id):
         user = models.get_user(user_id)
-        if not config.server_vault_configured(user["server_name"]):
+        if not server_ready_for_actions(models.get_server(user["server_id"])):
             flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de remover.', "warning")
             return redirect(url_for("user_detail", user_id=user_id))
         result = ansible_bridge.run_sanitize(

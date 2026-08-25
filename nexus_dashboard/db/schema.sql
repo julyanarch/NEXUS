@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS servers (
     ssh_user TEXT NOT NULL,
     ssh_port INTEGER NOT NULL DEFAULT 22,
     enabled INTEGER NOT NULL DEFAULT 1,
+    sudo_nopasswd INTEGER NOT NULL DEFAULT 0,
     last_test_status TEXT,
     last_test_at TEXT,
     created_at TEXT NOT NULL,

@@ -23,6 +23,17 @@
     <div class="form-group">
       <label><input type="checkbox" name="enabled" {{ 'checked' if (server is none) or server.enabled }}> Habilitado</label>
     </div>
+    <div class="form-group">
+      <label>
+        <input type="checkbox" name="sudo_nopasswd" {{ 'checked' if server and server.sudo_nopasswd }}>
+        Este servidor não pede senha de sudo (NOPASSWD configurado no <code>sudoers</code>)
+      </label>
+      <span class="muted" style="font-size:0.78rem;">
+        Marque isso só se o <code>sudo</code> já está configurado pra não pedir senha nesse
+        usuário/servidor. Marcando, a tela "senha sudo" não é exigida antes de executar ações
+        aqui.
+      </span>
+    </div>
     <button class="btn" type="submit">Salvar</button>
     <a class="btn btn-outline" href="{{ url_for('list_servers') }}">Cancelar</a>
   </form>

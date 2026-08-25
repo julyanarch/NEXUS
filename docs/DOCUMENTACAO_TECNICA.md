@@ -269,3 +269,36 @@ Decisões de design (para não reintroduzir sem querer se alguém pedir "mais gr
   (volume), não identidade — colorir cada servidor diferente aqui seria ruído, não informação.
 - Todas as cores foram validadas para contraste >=3:1 contra o fundo dos cards antes de ir para o
   código (ver `nexus_dashboard/config.py`, constantes `CHART_COLOR_*`).
+
+## 11. Caso real: "Missing sudo password" e a opção NOPASSWD
+
+Durante os testes, uma execução de `create` falhou só num servidor específico, com o erro do
+Ansible:
+```
+fatal: [thierry]: FAILED! => {"changed": false, "msg": "Missing sudo password"}
+```
+
+**O que esse erro significa de fato:** é uma checagem do próprio Ansible, feita *antes* de tentar
+autenticar — "eu preciso de uma senha de sudo pra essa tarefa e não tenho nenhuma configurada pra
+esse host". Ele nem chega a testar se o usuário SSH tem permissão de sudo ou não. Por isso:
+
+- Se a permissão de sudo estivesse faltando (mas a senha estivesse configurada), o erro seria
+  outro (`"... is not in the sudoers file"`).
+- Se o servidor tivesse `NOPASSWD` configurado no `sudoers`, esse erro **nunca apareceria** —
+  NOPASSWD significa que o `sudo` nunca pede senha, então não haveria prompt nenhum pra faltar
+  resposta. A presença desse erro é, na prática, prova de que **não** é NOPASSWD.
+
+**A causa real, nesse caso**, foi simplesmente que a senha de sudo daquele servidor ainda não
+tinha sido configurada na tela "senha sudo" no momento daquela execução. Depois de configurada, a
+mesma linha de auditoria **continua marcada como `failed` pra sempre** — o histórico não se
+reescreve; é preciso rodar a ação de novo pra gerar um registro novo e confirmar que passou a
+funcionar.
+
+**Limitação real que isso revelou:** o NEXUS, antes desse ajuste, *exigia* uma senha de sudo
+configurada pra liberar qualquer ação em um servidor — mesmo que aquele servidor tivesse `sudo`
+configurado com `NOPASSWD` (nunca pede senha) e a pessoa não soubesse nenhuma senha porque nunca
+foi necessária. Foi adicionado um campo `sudo_nopasswd` na tabela `servers` (com migração segura
+para bancos já existentes, feita em `models._migrate_schema()`) e uma opção correspondente no
+formulário de servidor ("Este servidor não pede senha de sudo"). Quando marcada, o NEXUS pula a
+exigência de configurar senha de sudo pra aquele servidor — o Ansible funciona normalmente sem
+senha nesse caso, porque o `sudo` real do servidor também nunca pede uma.

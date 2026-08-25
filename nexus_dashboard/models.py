@@ -22,7 +22,20 @@ def init_db():
         conn.executescript(f.read())
     conn.commit()
     conn.close()
+    _migrate_schema()
     _seed_servers_from_legacy_conf()
+
+
+def _migrate_schema():
+    """Adiciona colunas novas em bancos que ja existiam antes delas serem
+    criadas no schema.sql. CREATE TABLE IF NOT EXISTS nao adiciona coluna em
+    tabela que ja existe, entao isso cobre esse caso sem apagar nada."""
+    conn = get_db()
+    existing_columns = {row["name"] for row in conn.execute("PRAGMA table_info(servers)").fetchall()}
+    if "sudo_nopasswd" not in existing_columns:
+        conn.execute("ALTER TABLE servers ADD COLUMN sudo_nopasswd INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+    conn.close()
 
 
 def _seed_servers_from_legacy_conf():
@@ -74,26 +87,27 @@ def get_server(server_id, conn=None):
     return row
 
 
-def create_server(name, ssh_host, ssh_user, ssh_port, enabled, conn=None):
+def create_server(name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False, conn=None):
     own = conn is None
     conn = conn or get_db()
     ts = now_iso()
     conn.execute(
-        """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, ts, ts),
+        """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0, ts, ts),
     )
     conn.commit()
     if own:
         conn.close()
 
 
-def update_server(server_id, name, ssh_host, ssh_user, ssh_port, enabled):
+def update_server(server_id, name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False):
     conn = get_db()
     conn.execute(
-        """UPDATE servers SET name=?, ssh_host=?, ssh_user=?, ssh_port=?, enabled=?, updated_at=?
-           WHERE id=?""",
-        (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, now_iso(), server_id),
+        """UPDATE servers SET name=?, ssh_host=?, ssh_user=?, ssh_port=?, enabled=?, sudo_nopasswd=?,
+           updated_at=? WHERE id=?""",
+        (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0,
+         now_iso(), server_id),
     )
     conn.commit()
     conn.close()
