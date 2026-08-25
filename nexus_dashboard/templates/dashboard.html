@@ -60,11 +60,12 @@
   <h3 style="margin-top:0;">Execuções recentes</h3>
   {% if recent_runs %}
   <table>
-    <thead><tr><th>Quando</th><th>Usuário</th><th>Ação</th><th>Modo</th><th>Status</th><th>Por</th></tr></thead>
+    <thead><tr><th>Quando</th><th>Servidor</th><th>Usuário</th><th>Ação</th><th>Modo</th><th>Status</th><th>Por</th></tr></thead>
     <tbody>
       {% for r in recent_runs %}
       <tr>
         <td>{{ r.performed_at }}</td>
+        <td>{{ r.server_name or '-' }}</td>
         <td>{{ r.username }}</td>
         <td>{{ r.action }}</td>
         <td>{{ r.mode }}</td>
@@ -74,6 +75,7 @@
       {% endfor %}
     </tbody>
   </table>
+  <p class="muted" style="margin-top:10px;"><a href="{{ url_for('list_runs') }}">Ver detalhe/erro de cada execução em Execuções →</a></p>
   {% else %}
   <p class="muted">Nenhuma execução registrada ainda.</p>
   {% endif %}

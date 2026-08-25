@@ -319,7 +319,11 @@ def list_action_log_for_user(managed_user_id):
 def list_recent_runs(limit=100):
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM action_log ORDER BY performed_at DESC LIMIT ?", (limit,)
+        """SELECT al.*, s.name AS server_name
+           FROM action_log al
+           LEFT JOIN servers s ON s.id = al.server_id
+           ORDER BY al.performed_at DESC LIMIT ?""",
+        (limit,),
     ).fetchall()
     conn.close()
     return rows
