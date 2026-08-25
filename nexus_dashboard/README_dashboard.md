@@ -84,10 +84,18 @@ configure port forwarding 5000→5000 nas configurações de rede do VirtualBox.
 
 1. **Identificar operador** — informe seu nome (sem senha; é só para o registro de auditoria).
 2. **Servidores** — confira/edite a lista importada, ou cadastre novos. Use "testar conexão" para
-   validar o SSH (não depende de senha de sudo). Em seguida, clique em **"senha sudo"** em cada
-   servidor e informe a senha de `sudo` **daquele servidor especificamente** — cada servidor guarda
-   a sua própria senha (podem ser diferentes entre si), gravada criptografada (Ansible Vault) e
-   reutilizada automaticamente nas próximas execuções nele.
+   validar o SSH (não depende de senha de sudo). Ao cadastrar um servidor novo, o NEXUS **testa
+   sozinho** (via `sudo -n`, sem risco de travar esperando senha) se aquele servidor precisa de
+   senha de sudo ou não:
+   - Se **não precisar** (NOPASSWD já configurado no `sudoers`), libera pra ações automaticamente
+     — nada a fazer.
+   - Se **precisar**, avisa e é só clicar em **"senha sudo"** naquele servidor e informar a senha
+     `sudo` **daquele servidor especificamente** — cada servidor guarda a sua própria senha (podem
+     ser diferentes entre si), gravada criptografada (Ansible Vault) e reutilizada automaticamente
+     nas próximas execuções nele.
+   - Se a detecção não conseguir concluir (ex.: chave SSH ainda não autorizada nesse servidor no
+     momento do cadastro), use o botão **"detectar"** na lista de Servidores para tentar de novo
+     depois.
 3. **Nova Ação** — substitui `nexus-users-dry` / `nexus-users-apply`: informe nome, chamado, ação
    (criar/bloquear/remover/purgar), grupos/shell/motivo quando fizer sentido, escolha o(s)
    servidor(es) e clique em **Simular** ou **Aplicar** — sem terminal. Só é possível executar em

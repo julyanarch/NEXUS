@@ -23,19 +23,28 @@
     <div class="form-group">
       <label><input type="checkbox" name="enabled" {{ 'checked' if (server is none) or server.enabled }}> Habilitado</label>
     </div>
+    {% if server %}
     <div class="form-group">
       <label>
-        <input type="checkbox" name="sudo_nopasswd" {{ 'checked' if server and server.sudo_nopasswd }}>
+        <input type="checkbox" name="sudo_nopasswd" {{ 'checked' if server.sudo_nopasswd }}>
         Este servidor não pede senha de sudo (NOPASSWD configurado no <code>sudoers</code>)
       </label>
       <span class="muted" style="font-size:0.78rem;">
-        Marque isso só se o <code>sudo</code> já está configurado pra não pedir senha nesse
-        usuário/servidor. Marcando, a tela "senha sudo" não é exigida antes de executar ações
-        aqui.
+        Isso normalmente é detectado automaticamente (veja o botão "detectar" na lista de
+        servidores). Só marque/desmarque aqui manualmente se a detecção automática não
+        funcionou ou se o <code>sudoers</code> mudou depois do cadastro.
       </span>
     </div>
+    {% endif %}
     <button class="btn" type="submit">Salvar</button>
     <a class="btn btn-outline" href="{{ url_for('list_servers') }}">Cancelar</a>
+    {% if not server %}
+    <p class="muted" style="margin-top:14px; font-size:0.8rem;">
+      Depois de salvar, o NEXUS testa sozinho (com <code>sudo -n</code>, sem risco de travar
+      esperando senha) se esse servidor precisa de senha de sudo ou não, e já libera pra ações
+      automaticamente quando não precisar.
+    </p>
+    {% endif %}
   </form>
 </div>
 {% endblock %}

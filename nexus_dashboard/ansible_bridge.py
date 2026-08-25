@@ -14,6 +14,7 @@ import inventory_builder
 PLAYBOOK_TEST = os.path.join(config.PLAYBOOKS_DIR, "test_connection.yml")
 PLAYBOOK_SANITIZE = os.path.join(config.PLAYBOOKS_DIR, "sanitize_users.yml")
 PLAYBOOK_HISTORY = os.path.join(config.PLAYBOOKS_DIR, "fetch_bash_history.yml")
+PLAYBOOK_DETECT_SUDO = os.path.join(config.PLAYBOOKS_DIR, "detect_sudo.yml")
 
 LEGACY_SCRIPT_COPY = os.path.join(config.ANSIBLE_DIR, "files", "nexus_sanitize_users.sh")
 
@@ -67,6 +68,30 @@ def _run(playbook_path, extravars):
 
 def test_connection(server_name):
     return _run(PLAYBOOK_TEST, {"target_host": server_name})
+
+
+def detect_sudo_nopasswd(server_name):
+    """Testa via 'sudo -n true' se esse servidor exige senha de sudo.
+
+    Retorna "nopasswd" (sudo nao pede senha), "needs_password" (pede senha
+    de verdade) ou "unknown" (nao foi possivel testar - ex.: chave SSH ainda
+    nao autorizada, host inacessivel). Nunca arrisca ficar esperando um
+    prompt de senha: "sudo -n" falha na hora em vez de perguntar.
+    """
+    result = _run(PLAYBOOK_DETECT_SUDO, {"target_host": server_name})
+    if not result["success"]:
+        return "unknown"
+
+    for event in result["runner"].events:
+        event_data = event.get("event_data", {})
+        if event_data.get("task") == "Testar sudo nao-interativo (sudo -n)":
+            res = event_data.get("res", {})
+            rc = res.get("rc")
+            if rc is None:
+                return "unknown"
+            return "nopasswd" if rc == 0 else "needs_password"
+
+    return "unknown"
 
 
 def _write_temp_csv(rows):

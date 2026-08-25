@@ -298,7 +298,24 @@ funcionar.
 configurada pra liberar qualquer ação em um servidor — mesmo que aquele servidor tivesse `sudo`
 configurado com `NOPASSWD` (nunca pede senha) e a pessoa não soubesse nenhuma senha porque nunca
 foi necessária. Foi adicionado um campo `sudo_nopasswd` na tabela `servers` (com migração segura
-para bancos já existentes, feita em `models._migrate_schema()`) e uma opção correspondente no
-formulário de servidor ("Este servidor não pede senha de sudo"). Quando marcada, o NEXUS pula a
-exigência de configurar senha de sudo pra aquele servidor — o Ansible funciona normalmente sem
-senha nesse caso, porque o `sudo` real do servidor também nunca pede uma.
+para bancos já existentes, feita em `models._migrate_schema()`).
+
+**Detecção automática (e não só um campo manual).** A pedido explícito do dono do projeto — "o
+projeto é pra facilitar a vida do analista, não pra ele checar servidor por servidor" — isso foi
+além de um checkbox manual: ao cadastrar um servidor novo, o NEXUS testa sozinho, na hora, se
+aquele servidor pede senha de sudo ou não, e já libera pra ações automaticamente quando não
+precisar.
+
+- **Como o teste é seguro** (`ansible/playbooks/detect_sudo.yml`): roda `sudo -n true` no
+  servidor. A flag `-n` faz o `sudo` ser não-interativo por definição — se uma senha seria
+  necessária, ele falha imediatamente com um erro, em vez de ficar esperando por um prompt que
+  nunca seria respondido. Isso é o que garante que o teste nunca "trava".
+- `rc == 0` → NOPASSWD confirmado, marca `sudo_nopasswd=1` automaticamente e libera ações.
+- `rc != 0` → precisa mesmo de senha; avisa o analista pra configurar em "senha sudo".
+- Falha de conexão (chave SSH ainda não autorizada, host inacessível) → resultado "unknown", pede
+  pra configurar manualmente ou tentar detectar de novo depois.
+- Um botão **"detectar"** na lista de Servidores permite repetir esse teste a qualquer momento
+  (útil se a chave SSH não estava pronta no momento do cadastro, ou se o `sudoers` mudou depois).
+- O checkbox manual "Este servidor não pede senha de sudo" continua existindo, mas só na tela de
+  **editar** servidor (não mais no cadastro) — serve como ajuste manual pra quando a detecção
+  automática não conseguir concluir.

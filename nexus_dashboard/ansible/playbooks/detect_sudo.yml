@@ -1,0 +1,18 @@
+---
+# NEXUS Dashboard - detecta automaticamente se o usuario SSH desse servidor
+# tem sudo configurado com NOPASSWD, sem nunca arriscar ficar esperando um
+# prompt de senha: "sudo -n" e nao-interativo por definicao - se uma senha
+# seria necessaria, ele falha imediatamente em vez de perguntar.
+#
+# extra-vars esperadas: target_host
+
+- name: NEXUS - Detectar sudo NOPASSWD
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: no
+  tasks:
+    - name: Testar sudo nao-interativo (sudo -n)
+      ansible.builtin.command: sudo -n true
+      register: sudo_check
+      changed_when: false
+      failed_when: false

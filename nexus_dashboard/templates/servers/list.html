@@ -45,6 +45,9 @@
           {% if not s.sudo_nopasswd %}
           <a class="btn btn-sm btn-outline" href="{{ url_for('server_vault', server_id=s.id) }}">senha sudo</a>
           {% endif %}
+          <form style="display:inline" method="post" action="{{ url_for('detect_server_sudo', server_id=s.id) }}">
+            <button class="btn btn-sm btn-outline" type="submit" title="Testa de novo, via sudo -n, se esse servidor pede senha de sudo">detectar</button>
+          </form>
           <form style="display:inline" method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
             <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
           </form>

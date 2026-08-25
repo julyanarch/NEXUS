@@ -207,24 +207,58 @@ def register_routes(app):
                 "warning",
             )
 
+    def _detect_and_apply_sudo_nopasswd(server_id, name):
+        """Testa sozinho se o servidor precisa de senha de sudo e ja marca
+        o resultado - o analista nao precisa checar manualmente."""
+        detection = ansible_bridge.detect_sudo_nopasswd(name)
+        if detection == "nopasswd":
+            models.set_server_sudo_nopasswd(server_id, True)
+            flash(
+                f'Detectado automaticamente: "{name}" não pede senha de sudo (NOPASSWD) — '
+                "nenhuma configuração adicional necessária.",
+                "success",
+            )
+        elif detection == "needs_password":
+            flash(
+                f'Detectado automaticamente: "{name}" pede senha de sudo. Configure em '
+                '"senha sudo" antes de executar ações nele.',
+                "warning",
+            )
+        else:
+            flash(
+                f'Não foi possível detectar automaticamente se "{name}" pede senha de sudo '
+                "(confira se a chave SSH já está autorizada nesse servidor). Use o botão "
+                '"detectar" na lista de servidores para tentar de novo, ou configure a '
+                "senha manualmente.",
+                "warning",
+            )
+
     @app.route("/servers/new", methods=["GET", "POST"])
     @require_operator
     def new_server():
         if request.method == "POST":
             ssh_host = request.form["ssh_host"].strip()
-            models.create_server(
-                request.form["name"].strip(),
+            name = request.form["name"].strip()
+            server_id = models.create_server(
+                name,
                 ssh_host,
                 request.form["ssh_user"].strip(),
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
-                sudo_nopasswd=_sudo_nopasswd_from_form(),
             )
             inventory_builder.rebuild_inventory()
             flash("Servidor cadastrado.", "success")
             _warn_duplicate_host(ssh_host)
+            _detect_and_apply_sudo_nopasswd(server_id, name)
             return redirect(url_for("list_servers"))
         return render_template("servers/form.html", server=None)
+
+    @app.route("/servers/<int:server_id>/detect-sudo", methods=["POST"])
+    @require_operator
+    def detect_server_sudo(server_id):
+        server = models.get_server(server_id)
+        _detect_and_apply_sudo_nopasswd(server_id, server["name"])
+        return redirect(url_for("list_servers"))
 
     @app.route("/servers/<int:server_id>/edit", methods=["GET", "POST"])
     @require_operator

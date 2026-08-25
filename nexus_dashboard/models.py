@@ -91,14 +91,26 @@ def create_server(name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=Fal
     own = conn is None
     conn = conn or get_db()
     ts = now_iso()
-    conn.execute(
+    cursor = conn.execute(
         """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd, created_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0, ts, ts),
     )
     conn.commit()
+    new_id = cursor.lastrowid
     if own:
         conn.close()
+    return new_id
+
+
+def set_server_sudo_nopasswd(server_id, sudo_nopasswd):
+    conn = get_db()
+    conn.execute(
+        "UPDATE servers SET sudo_nopasswd=?, updated_at=? WHERE id=?",
+        (1 if sudo_nopasswd else 0, now_iso(), server_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 def update_server(server_id, name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False):
