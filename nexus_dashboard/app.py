@@ -41,17 +41,21 @@ def require_operator(view_func):
     return wrapped
 
 
-def vault_configured():
-    return os.path.exists(config.VAULT_PASS_FILE) and os.path.exists(config.VAULT_VARS_FILE)
+def servers_missing_vault():
+    return [
+        s for s in models.list_servers()
+        if s["enabled"] and not config.server_vault_configured(s["name"])
+    ]
 
 
 def register_routes(app):
 
     @app.context_processor
     def inject_globals():
+        missing = servers_missing_vault()
         return {
             "operator_name": session.get("operator_name"),
-            "vault_configured": vault_configured(),
+            "servers_missing_vault": missing,
             "lock_max_days": config.LOCK_MAX_DAYS,
             "lock_warning_days": config.LOCK_WARNING_DAYS,
         }
@@ -87,25 +91,29 @@ def register_routes(app):
 
     # -------------------------------------------------------------- vault --
 
-    @app.route("/setup/vault", methods=["GET", "POST"])
+    def _ensure_vault_pass_file():
+        os.makedirs(os.path.dirname(config.VAULT_PASS_FILE), exist_ok=True)
+        if not os.path.exists(config.VAULT_PASS_FILE):
+            # Segredo local usado apenas para criptografar/descriptografar os
+            # vault.yml de cada servidor (nao e a senha de nenhuma conta),
+            # gerado uma unica vez e mantido estavel para todos os servidores.
+            with open(config.VAULT_PASS_FILE, "w", encoding="utf-8") as f:
+                f.write(secrets.token_urlsafe(48))
+            os.chmod(config.VAULT_PASS_FILE, 0o600)
+
+    @app.route("/servers/<int:server_id>/vault", methods=["GET", "POST"])
     @require_operator
-    def setup_vault():
+    def server_vault(server_id):
+        server = models.get_server(server_id)
         if request.method == "POST":
             become_password = request.form.get("become_password", "")
             if not become_password:
-                flash("Informe a senha de sudo a ser armazenada no Ansible Vault.", "danger")
-                return redirect(url_for("setup_vault"))
+                flash("Informe a senha de sudo desse servidor.", "danger")
+                return redirect(url_for("server_vault", server_id=server_id))
 
-            os.makedirs(os.path.dirname(config.VAULT_PASS_FILE), exist_ok=True)
-            os.makedirs(os.path.dirname(config.VAULT_VARS_FILE), exist_ok=True)
-
-            if not os.path.exists(config.VAULT_PASS_FILE):
-                # Segredo local usado apenas para criptografar/descriptografar o
-                # vault.yml (nao e uma senha de conta de usuario), gerado uma
-                # unica vez e mantido estavel.
-                with open(config.VAULT_PASS_FILE, "w", encoding="utf-8") as f:
-                    f.write(secrets.token_urlsafe(48))
-                os.chmod(config.VAULT_PASS_FILE, 0o600)
+            _ensure_vault_pass_file()
+            vars_dir = config.host_vars_dir(server["name"])
+            os.makedirs(vars_dir, exist_ok=True)
 
             encrypt = subprocess.run(
                 [
@@ -118,23 +126,38 @@ def register_routes(app):
                 text=True,
             )
             if encrypt.returncode != 0:
-                flash(f"Falha ao gravar o vault: {encrypt.stderr}", "danger")
-                return redirect(url_for("setup_vault"))
+                flash(f"Falha ao gravar o vault de {server['name']}: {encrypt.stderr}", "danger")
+                return redirect(url_for("server_vault", server_id=server_id))
 
-            with open(config.VAULT_VARS_FILE, "w", encoding="utf-8") as f:
+            vault_path = config.host_vault_file(server["name"])
+            with open(vault_path, "w", encoding="utf-8") as f:
                 f.write(encrypt.stdout + "\n")
-            os.chmod(config.VAULT_VARS_FILE, 0o600)
+            os.chmod(vault_path, 0o600)
 
-            flash("Senha de sudo configurada no Ansible Vault. Nenhum prompt sera exibido nas proximas execucoes.", "success")
-            return redirect(url_for("dashboard"))
+            vars_path = config.host_vars_file(server["name"])
+            if not os.path.exists(vars_path):
+                with open(vars_path, "w", encoding="utf-8") as f:
+                    f.write('ansible_become_pass: "{{ vault_become_password }}"\n')
 
-        return render_template("setup/vault.html")
+            flash(
+                f"Senha de sudo de {server['name']} configurada no Ansible Vault. "
+                "Nenhum prompt sera exibido nas proximas execucoes nesse servidor.",
+                "success",
+            )
+            return redirect(url_for("list_servers"))
+
+        return render_template(
+            "servers/vault.html", server=server,
+            already_configured=config.server_vault_configured(server["name"]),
+        )
 
     # ------------------------------------------------------------ servers --
 
     @app.route("/servers")
     def list_servers():
-        return render_template("servers/list.html", servers=models.list_servers())
+        servers = models.list_servers()
+        vault_status = {s["id"]: config.server_vault_configured(s["name"]) for s in servers}
+        return render_template("servers/list.html", servers=servers, vault_status=vault_status)
 
     @app.route("/servers/new", methods=["GET", "POST"])
     @require_operator
@@ -181,10 +204,10 @@ def register_routes(app):
     @app.route("/servers/<int:server_id>/test", methods=["POST"])
     @require_operator
     def test_server(server_id):
+        # So testa conectividade SSH (sem sudo), por isso nao depende do
+        # Vault estar configurado - pode ser usado antes mesmo de definir a
+        # senha de sudo do servidor.
         server = models.get_server(server_id)
-        if not vault_configured():
-            flash("Configure o Ansible Vault em /setup/vault antes de testar servidores.", "warning")
-            return redirect(url_for("list_servers"))
         result = ansible_bridge.test_connection(server["name"])
         models.set_server_test_result(server_id, "ok" if result["success"] else "falhou")
         flash(
@@ -216,15 +239,21 @@ def register_routes(app):
         return [int(i) for i in ids]
 
     def _run_action(mode):
-        if not vault_configured():
-            flash("Configure o Ansible Vault em /setup/vault antes de executar acoes.", "warning")
-            return redirect(url_for("setup_vault"))
-
         row = _collect_action_form()
         server_ids = _selected_server_ids()
         if not row["username"] or not row["action"] or not server_ids:
             flash("Preencha usuario, acao e ao menos um servidor.", "danger")
             return redirect(url_for("new_action_form"))
+
+        target_servers = [models.get_server(sid) for sid in server_ids]
+        missing = [s["name"] for s in target_servers if not config.server_vault_configured(s["name"])]
+        if missing:
+            flash(
+                "Configure a senha de sudo antes de executar acoes nestes servidores: "
+                + ", ".join(missing),
+                "warning",
+            )
+            return redirect(url_for("list_servers"))
 
         password_hashes = None
         if mode == "apply" and row["action"] in ("create", "add"):
@@ -334,8 +363,8 @@ def register_routes(app):
     @require_operator
     def collect_history(user_id):
         user = models.get_user(user_id)
-        if not vault_configured():
-            flash("Configure o Ansible Vault em /setup/vault antes de coletar historico.", "warning")
+        if not config.server_vault_configured(user["server_name"]):
+            flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de coletar historico.', "warning")
             return redirect(url_for("user_detail", user_id=user_id))
         result = ansible_bridge.fetch_bash_history(user["server_name"], user["username"])
         models.save_collected_facts(user_id, user["server_id"], result["status"], result.get("excerpt", ""))
@@ -346,6 +375,9 @@ def register_routes(app):
     @require_operator
     def force_removal(user_id):
         user = models.get_user(user_id)
+        if not config.server_vault_configured(user["server_name"]):
+            flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de remover.', "warning")
+            return redirect(url_for("user_detail", user_id=user_id))
         result = ansible_bridge.run_sanitize(
             target_host=user["server_name"], mode="apply",
             rows=[{"username": user["username"], "action": "remove", "home": "no",

@@ -16,7 +16,6 @@
       <a class="nav-link {{ 'active' if request.path.startswith('/actions') }}" href="{{ url_for('new_action_form') }}">Nova Ação</a>
       <a class="nav-link {{ 'active' if request.path.startswith('/servers') }}" href="{{ url_for('list_servers') }}">Servidores</a>
       <a class="nav-link {{ 'active' if request.path.startswith('/runs') }}" href="{{ url_for('list_runs') }}">Execuções</a>
-      <a class="nav-link {{ 'active' if request.path.startswith('/setup') }}" href="{{ url_for('setup_vault') }}">Configuração (Vault)</a>
 
       <div class="operator-box">
         {% if operator_name %}
@@ -26,10 +25,11 @@
           <a href="{{ url_for('set_operator') }}">Identificar operador</a>
         {% endif %}
         <br>
-        {% if vault_configured %}
-          <span style="color: var(--ok);">Vault configurado</span>
+        {% if not servers_missing_vault %}
+          <span style="color: var(--ok);">Senha de sudo ok em todos os servidores</span>
         {% else %}
-          <span style="color: var(--danger);">Vault não configurado</span>
+          <span style="color: var(--danger);">{{ servers_missing_vault|length }} servidor(es) sem senha de sudo</span>
+          <br><a href="{{ url_for('list_servers') }}">configurar</a>
         {% endif %}
       </div>
     </aside>

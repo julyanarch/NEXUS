@@ -20,7 +20,7 @@ nexus_sanitize_users_*.json
 # NEXUS Dashboard - segredos e dados runtime, nunca versionar
 nexus_dashboard/db/*.db
 nexus_dashboard/ansible/.vault_pass
-nexus_dashboard/ansible/group_vars/all/vault.yml
+nexus_dashboard/ansible/host_vars/
 nexus_dashboard/ansible/inventory/hosts.yml
 nexus_dashboard/ansible/artifacts/
 

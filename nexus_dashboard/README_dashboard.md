@@ -15,13 +15,25 @@ lógica.
 O dashboard precisa de Linux — o Ansible não roda nativamente no Windows. Ele deve rodar na mesma
 VM/ponte que já tem acesso SSH aos servidores gerenciados (`douglas`, `andressa`).
 
-**1. Levar o projeto até a VM.** Use o mesmo caminho que você já usa hoje (pasta compartilhada do
-VirtualBox), só que copiando a pasta toda em vez de arquivo por arquivo:
+**1. Levar o projeto até a VM.** O código fica em um repositório privado no GitHub
+(`https://github.com/julyanarch/NEXUS`); o PC pessoal só faz `git push` e a VM só faz `git clone`/
+`git pull` — não depende de pasta compartilhada nem de copiar arquivo por arquivo:
 
 ```bash
-# dentro da VM, com a pasta do projeto montada em /media/sf_vm_pasta_compartilhada
-cp -r /media/sf_vm_pasta_compartilhada/Projeto_estagio ~/nexus
+# dentro da VM (máquina ponte)
+git clone https://github.com/julyanarch/NEXUS.git ~/nexus
 cd ~/nexus/nexus_dashboard
+```
+
+Como o repositório é privado, o Git vai pedir autenticação — use um token de acesso pessoal do
+GitHub no lugar da senha (Settings → Developer settings → Personal access tokens), ou configure
+uma chave SSH e clone com `git@github.com:julyanarch/NEXUS.git`.
+
+Depois da primeira vez, para trazer atualizações futuras basta:
+
+```bash
+cd ~/nexus
+git pull
 ```
 
 Mantenha a estrutura de pastas intacta — `nexus_dashboard/` espera encontrar
@@ -71,14 +83,16 @@ configure port forwarding 5000→5000 nas configurações de rede do VirtualBox.
 **7. Primeiros passos na interface**, na ordem:
 
 1. **Identificar operador** — informe seu nome (sem senha; é só para o registro de auditoria).
-2. **Configuração (Vault)** — informe a senha de `sudo` dos servidores uma única vez. Ela é
-   gravada criptografada (Ansible Vault) e reutilizada automaticamente em toda execução seguinte.
-3. **Servidores** — confira/edite a lista importada, ou cadastre novos. Use "testar conexão" para
-   validar SSH + Vault sem digitar nada.
-4. **Nova Ação** — substitui `nexus-users-dry` / `nexus-users-apply`: informe nome, chamado, ação
+2. **Servidores** — confira/edite a lista importada, ou cadastre novos. Use "testar conexão" para
+   validar o SSH (não depende de senha de sudo). Em seguida, clique em **"senha sudo"** em cada
+   servidor e informe a senha de `sudo` **daquele servidor especificamente** — cada servidor guarda
+   a sua própria senha (podem ser diferentes entre si), gravada criptografada (Ansible Vault) e
+   reutilizada automaticamente nas próximas execuções nele.
+3. **Nova Ação** — substitui `nexus-users-dry` / `nexus-users-apply`: informe nome, chamado, ação
    (criar/bloquear/remover/purgar), grupos/shell/motivo quando fizer sentido, escolha o(s)
-   servidor(es) e clique em **Simular** ou **Aplicar** — sem terminal.
-5. **Usuários** — lista todos os usuários geridos pelo dashboard; cada um tem uma página de
+   servidor(es) e clique em **Simular** ou **Aplicar** — sem terminal. Só é possível executar em
+   servidores que já tenham a senha de sudo configurada no passo anterior.
+4. **Usuários** — lista todos os usuários geridos pelo dashboard; cada um tem uma página de
    detalhe com o resumo da **IA NEXUS** (local, baseada em regras, sem envio de dados a serviços
    externos): status, dias bloqueado/restantes até a remoção automática, grupos, criação
    (quando/quem), documentos vinculados e comandos executados (best-effort, via
@@ -105,13 +119,15 @@ do usuário.
 | Documentos/chamados vinculados | tabela `documents` |
 | Histórico de comandos coletado | tabela `collected_facts` |
 | Playbooks Ansible | `ansible/playbooks/` |
-| Senha de sudo (criptografada) | `ansible/group_vars/all/vault.yml` + `ansible/.vault_pass` |
+| Senha de sudo de cada servidor (criptografada) | `ansible/host_vars/<nome-do-servidor>/vault.yml` + `ansible/.vault_pass` |
 
 ## Segurança
 
-- Nenhuma senha de servidor é solicitada fora da configuração única do Vault.
+- Nenhuma senha de servidor é solicitada fora da tela "senha sudo" de cada servidor.
+- Cada servidor tem sua própria senha de sudo guardada separadamente — a senha de um servidor
+  nunca é reaproveitada em outro.
 - A senha temporária de um novo usuário é digitada apenas no formulário web (HTTPS recomendado em
   produção) e nunca é enviada em texto puro ao servidor remoto — apenas o hash SHA-512.
-- `ansible/.vault_pass` e `ansible/group_vars/all/vault.yml` nunca devem ser versionados (já estão
-  no `.gitignore` do projeto).
+- `ansible/.vault_pass` e `ansible/host_vars/` nunca devem ser versionados (já estão no
+  `.gitignore` do projeto).
 - Proteja o acesso ao arquivo `db/nexus.db` — contém histórico de comandos e dados de auditoria.

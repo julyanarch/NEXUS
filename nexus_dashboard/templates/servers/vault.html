@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><h1>Senha de sudo — {{ server.name }}</h1></div>
+
+<div class="card" style="max-width:560px;">
+  <p>
+    Esta é a senha de <code>sudo</code> da conta <code>{{ server.ssh_user }}</code> especificamente
+    no servidor <code>{{ server.name }}</code> ({{ server.ssh_host }}). Cada servidor guarda a sua
+    própria senha — servidores diferentes podem ter senhas diferentes. Ela é gravada criptografada
+    (Ansible Vault) e usada automaticamente em toda execução nesse servidor — <strong>nenhum
+    prompt de senha</strong> será exibido depois desta configuração.
+  </p>
+  <p class="muted">
+    Pré-requisito: a chave SSH da máquina ponte já deve estar autorizada nesse servidor
+    (<code>ssh-copy-id</code>), como descrito no README original do projeto.
+  </p>
+  <form method="post">
+    <div class="form-group">
+      <label>Senha de sudo de {{ server.ssh_user }}@{{ server.name }}</label>
+      <input type="password" name="become_password" required>
+    </div>
+    <button class="btn" type="submit">Salvar no Vault</button>
+    <a class="btn btn-outline" href="{{ url_for('list_servers') }}">Cancelar</a>
+  </form>
+  {% if already_configured %}
+  <p style="margin-top:14px; color: var(--ok);">
+    Este servidor já tem uma senha configurada. Salvar novamente substitui a senha atual.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

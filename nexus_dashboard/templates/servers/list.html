@@ -8,7 +8,7 @@
 <div class="card">
   <table>
     <thead>
-      <tr><th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th></th></tr>
+      <tr><th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th><th></th></tr>
     </thead>
     <tbody>
       {% for s in servers %}
@@ -29,17 +29,25 @@
           {% endif %}
         </td>
         <td>
+          {% if vault_status[s.id] %}
+            <span class="badge badge-active">configurada</span>
+          {% else %}
+            <span class="badge badge-danger">pendente</span>
+          {% endif %}
+        </td>
+        <td>
           <a class="btn btn-sm btn-outline" href="{{ url_for('edit_server', server_id=s.id) }}">editar</a>
           <form style="display:inline" method="post" action="{{ url_for('test_server', server_id=s.id) }}">
             <button class="btn btn-sm" type="submit">testar conexão</button>
           </form>
+          <a class="btn btn-sm btn-outline" href="{{ url_for('server_vault', server_id=s.id) }}">senha sudo</a>
           <form style="display:inline" method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
             <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
           </form>
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="muted">Nenhum servidor cadastrado.</td></tr>
+      <tr><td colspan="8" class="muted">Nenhum servidor cadastrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>

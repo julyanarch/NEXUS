@@ -24,11 +24,13 @@
   </div>
 </div>
 
-{% if not vault_configured %}
+{% if servers_missing_vault %}
 <div class="card">
-  <strong>Configuração pendente:</strong> o Ansible Vault ainda não foi configurado.
-  <a href="{{ url_for('setup_vault') }}">Configurar agora</a> para liberar testes de conexão e execução de ações
-  sem pedidos de senha por servidor.
+  <strong>Configuração pendente:</strong> os servidores
+  {% for s in servers_missing_vault %}<code>{{ s.name }}</code>{{ ", " if not loop.last }}{% endfor %}
+  ainda não têm a senha de sudo configurada.
+  <a href="{{ url_for('list_servers') }}">Configurar agora</a> para liberar a execução de ações
+  sem pedidos de senha nesses servidores.
 </div>
 {% endif %}
 
