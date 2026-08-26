@@ -6,9 +6,13 @@
 </div>
 
 <div class="card">
+  <div class="table-scroll">
   <table>
     <thead>
-      <tr><th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th><th></th></tr>
+      <tr>
+        <th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th>
+        <th>Editar</th><th>Conexão</th><th>Sudo</th><th>Detecção</th><th>Ativação</th><th>Exclusão</th>
+      </tr>
     </thead>
     <tbody>
       {% for s in servers %}
@@ -38,37 +42,48 @@
           {% endif %}
         </td>
         <td>
-          <div class="actions">
-            <a class="btn btn-sm btn-outline" href="{{ url_for('edit_server', server_id=s.id) }}">editar</a>
-            <form method="post" action="{{ url_for('test_server', server_id=s.id) }}">
-              <button class="btn btn-sm" type="submit">testar conexão</button>
-            </form>
-            {% if not s.sudo_nopasswd %}
-            <a class="btn btn-sm btn-outline" href="{{ url_for('server_vault', server_id=s.id) }}">senha sudo</a>
-            {% endif %}
-            <form method="post" action="{{ url_for('detect_server_sudo', server_id=s.id) }}">
-              <button class="btn btn-sm btn-outline" type="submit" title="Testa de novo, via sudo -n, se esse servidor pede senha de sudo">detectar</button>
-            </form>
-            <form method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
-              <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
-            </form>
-            {% if not has_history[s.id] %}
-            <form method="post" action="{{ url_for('delete_server', server_id=s.id) }}"
-                  data-confirm='Excluir "{{ s.name }}" definitivamente?'>
-              <button class="btn btn-sm btn-danger" type="submit">excluir</button>
-            </form>
-            {% else %}
-            <span class="muted" style="font-size:0.75rem;" title="Tem usuários/execuções registradas - use desabilitar">
-              sem exclusão (tem histórico)
-            </span>
-            {% endif %}
-          </div>
+          <a class="btn btn-sm btn-outline" href="{{ url_for('edit_server', server_id=s.id) }}">editar</a>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('test_server', server_id=s.id) }}">
+            <button class="btn btn-sm" type="submit">testar conexão</button>
+          </form>
+        </td>
+        <td>
+          {% if not s.sudo_nopasswd %}
+          <a class="btn btn-sm btn-outline" href="{{ url_for('server_vault', server_id=s.id) }}">senha sudo</a>
+          {% else %}
+          <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('detect_server_sudo', server_id=s.id) }}">
+            <button class="btn btn-sm btn-outline" type="submit" title="Testa de novo, via sudo -n, se esse servidor pede senha de sudo">detectar</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
+            <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
+          </form>
+        </td>
+        <td>
+          {% if not has_history[s.id] %}
+          <form method="post" action="{{ url_for('delete_server', server_id=s.id) }}"
+                data-confirm='Excluir "{{ s.name }}" definitivamente?'>
+            <button class="btn btn-sm btn-danger" type="submit">excluir</button>
+          </form>
+          {% else %}
+          <span class="muted" style="font-size:0.75rem;" title="Tem usuários/execuções registradas - use desabilitar">
+            sem exclusão
+          </span>
+          {% endif %}
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="muted">Nenhum servidor cadastrado.</td></tr>
+      <tr><td colspan="13" class="muted">Nenhum servidor cadastrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endblock %}

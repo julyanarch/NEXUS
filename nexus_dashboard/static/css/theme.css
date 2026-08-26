@@ -101,6 +101,10 @@ a:hover { text-decoration: underline; }
 }
 .actions form { display: inline-flex; margin: 0; }
 
+.table-scroll { overflow-x: auto; }
+table td form { margin: 0; }
+table td .btn, table td .btn-sm { white-space: nowrap; }
+
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
