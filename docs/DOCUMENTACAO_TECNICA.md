@@ -458,3 +458,21 @@ o contêiner de fora, não a tabela.
 - Nome de servidor decomissionado (seção 13) pode ficar bem comprido (`nome [excluído <data>]`) —
   isso sozinho alargaria a coluna. Agora trunca com reticências (`.truncate`), com o nome completo
   disponível no tooltip (passar o mouse por cima).
+
+---
+
+## 17. Identificação de operador expira — evita atribuir ação à pessoa errada
+
+A tela "Identificar operador" (sem login/senha, só pra registrar quem fez cada ação na auditoria)
+já bloqueava qualquer ação sem nenhum operador identificado (`require_operator`). O problema não
+coberto: uma vez identificado, isso ficava valendo **pra sempre** na sessão do navegador — se o
+navegador (ou a VM) ficar aberto o dia todo e outra pessoa usar sem clicar em "trocar", a ação dela
+fica registrada em nome de quem se identificou por último. Isso é especialmente arriscado num
+ambiente de VM/navegador compartilhado.
+
+**Correção:** a identificação agora expira depois de `config.OPERATOR_SESSION_MINUTES` (padrão: 30
+minutos) sem trocar. Passado esse tempo, a próxima tentativa de ação (não navegação — só entrar em
+"Servidores" ou no "Painel" não conta) é barrada e pede pra se identificar de novo, com uma
+mensagem explicando o motivo (não é erro, é o comportamento esperado). `session["operator_set_at"]`
+grava o instante (`time.time()`) da última identificação; `require_operator` compara com o horário
+atual a cada acesso a uma rota que grava algo.

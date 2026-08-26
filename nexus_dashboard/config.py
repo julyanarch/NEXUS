@@ -60,5 +60,13 @@ SERVER_CHART_WINDOW_DAYS = 30
 
 SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET", "nexus-dashboard-dev-secret")
 
+# Depois de quanto tempo sem trocar a identificacao de operador (tela
+# "Identificar operador") a sessao e considerada "velha demais" e a app pede
+# pra identificar de novo antes de qualquer acao - existe pra evitar que uma
+# acao fique registrada em nome de quem usou o navegador por ultimo, se a
+# pessoa seguinte esquecer de clicar em "trocar" (ex.: navegador/VM
+# compartilhado, ficou aberto o dia todo).
+OPERATOR_SESSION_MINUTES = 30
+
 SCHEDULER_HOUR = 3
 SCHEDULER_MINUTE = 0

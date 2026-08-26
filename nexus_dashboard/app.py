@@ -4,6 +4,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import time
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from passlib.hash import sha512_crypt
@@ -36,8 +37,21 @@ def create_app():
 def require_operator(view_func):
     @functools.wraps(view_func)
     def wrapped(*args, **kwargs):
-        if not session.get("operator_name"):
-            flash("Informe seu nome de operador antes de executar acoes.", "warning")
+        set_at = session.get("operator_set_at")
+        expired = set_at is not None and (time.time() - set_at) > config.OPERATOR_SESSION_MINUTES * 60
+
+        if not session.get("operator_name") or expired:
+            session.pop("operator_name", None)
+            session.pop("operator_set_at", None)
+            if expired:
+                flash(
+                    f"Sua identificacao de operador expirou (valida por {config.OPERATOR_SESSION_MINUTES} min, "
+                    "pra evitar que uma acao fique registrada em nome de quem usou o navegador por ultimo) - "
+                    "informe seu nome de novo antes de continuar.",
+                    "warning",
+                )
+            else:
+                flash("Informe seu nome de operador antes de executar acoes.", "warning")
             session["next_url"] = request.url
             return redirect(url_for("set_operator"))
         return view_func(*args, **kwargs)
@@ -115,6 +129,7 @@ def register_routes(app):
                 flash("Informe um nome valido.", "danger")
                 return redirect(url_for("set_operator"))
             session["operator_name"] = name
+            session["operator_set_at"] = time.time()
             next_url = session.pop("next_url", None)
             flash(f"Identificado como {name}.", "success")
             return redirect(next_url or url_for("dashboard"))
