@@ -630,3 +630,15 @@ método de `dict`/`str`) em `ai_engine.py` e nos 3 lugares do template que acess
 `insights.commands.items`. Mesma pegadinha vale pra qualquer dict passado a um template Jinja com
 chave `items`, `keys`, `values`, `count`, `index`, `update` etc. - vale a pena evitar esses nomes de
 chave, ou usar `dict["chave"]` em vez de `dict.chave` no template quando não dá pra evitar.
+
+---
+
+## 25. "Forçar remoção agora" restrito a usuário bloqueado
+
+Na seção 22 eu tinha corrigido só a *explicação* de que esse botão aparecia também pra usuário
+ativo (não só bloqueado) - o comportamento em si (`user.status != 'removed'`) era assim desde
+antes dessa conversa. A pedido explícito, isso mudou de verdade agora: o botão só aparece (e a
+rota `/users/<id>/force-removal` só aceita) quando `user.status == 'locked'`. Faz mais sentido
+com o nome do botão e o texto do tooltip, que sempre falou em "sem esperar os N dias de bloqueio" -
+isso só existe pra quem já está bloqueado; pra usuário ativo, a forma de remover é a tela "Nova
+Ação" (ação `remove`/`purge`), não esse atalho.

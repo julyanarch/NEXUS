@@ -550,6 +550,9 @@ def register_routes(app):
     @require_operator
     def force_removal(user_id):
         user = models.get_user(user_id)
+        if user["status"] != "locked":
+            flash("Remocao antecipada so se aplica a usuario bloqueado.", "warning")
+            return redirect(url_for("user_detail", user_id=user_id))
         if not server_ready_for_actions(models.get_server(user["server_id"])):
             flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de remover.', "warning")
             return redirect(url_for("user_detail", user_id=user_id))

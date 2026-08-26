@@ -11,10 +11,10 @@
     <a class="btn btn-outline" href="{{ url_for('download_history', user_id=user.id) }}"
        title="Baixa a coleta mais recente (mostrada abaixo) como arquivo .txt.">Baixar .txt</a>
     {% endif %}
-    {% if user.status != 'removed' %}
+    {% if user.status == 'locked' %}
     <form style="display:inline" method="post" action="{{ url_for('force_removal', user_id=user.id) }}"
           data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?"
-          title="{% if user.status == 'locked' %}Executa a remocao (userdel) agora, sem esperar os {{ lock_max_days }} dias de bloqueio ate a remocao automatica.{% else %}Executa a remocao (userdel) agora - disponivel tambem pra usuario ativo, nao precisa bloquear primeiro.{% endif %}">
+          title="Executa a remocao (userdel) agora, sem esperar os {{ lock_max_days }} dias de bloqueio ate a remocao automatica.">
       <button class="btn btn-danger" type="submit">Forçar remoção agora</button>
     </form>
     {% endif %}
