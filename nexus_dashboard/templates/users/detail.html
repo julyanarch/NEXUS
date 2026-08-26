@@ -82,12 +82,12 @@
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0;">Verificar arquivo na home do usuário</h3>
-  <p class="muted">Confere no servidor se um arquivo ou pasta existe na home de {{ user.username }}.</p>
+  <h3 style="margin-top:0;">Verificar arquivo</h3>
+  <p class="muted">Confere no servidor se um arquivo ou pasta existe.</p>
   <form method="post" action="{{ url_for('check_home_file', user_id=user.id) }}" class="form-grid" style="align-items:end;">
     <div class="form-group">
-      <label>Caminho (relativo à home)</label>
-      <input type="text" name="file_path" placeholder="ex.: relatorio.pdf" required>
+      <label>Caminho (relativo à home, ou completo começando com /)</label>
+      <input type="text" name="file_path" placeholder="ex.: relatorio.pdf ou /var/log/app.log" required>
     </div>
     <div class="form-group"><button class="btn btn-outline" type="submit">Verificar</button></div>
   </form>

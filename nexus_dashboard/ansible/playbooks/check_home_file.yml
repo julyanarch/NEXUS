@@ -1,15 +1,18 @@
 ---
-# NEXUS Dashboard - confere se um arquivo/pasta especifico existe na home de
-# um usuario gerido, com tamanho e data de modificacao quando existe. So
-# confirma presenca/ausencia - nao lista o conteudo da pasta nem baixa nada.
+# NEXUS Dashboard - confere se um arquivo/pasta especifico existe no
+# servidor, com tamanho e data de modificacao quando existe. So confirma
+# presenca/ausencia - nao lista o conteudo de pastas nem baixa nada. Sem
+# restricao de caminho por design: e so leitura (stat), pra consulta/
+# investigacao, e quem usa o NEXUS ja tem acesso root nesses servidores via
+# Ansible de qualquer forma.
 #
 # extra-vars esperadas:
 #   target_host      nome do host no inventario
-#   target_username   usuario cuja home sera verificada
-#   relative_path      caminho relativo a /home/<target_username>/
+#   target_username   usuario (so usado pra identificar a task no log)
+#   full_path          caminho completo a verificar (absoluto)
 #   host_vars_root      pasta local com host_vars/<servidor>/{vars,vault}.yml
 
-- name: NEXUS - Verificar arquivo na home do usuario
+- name: NEXUS - Verificar arquivo no servidor
   hosts: "{{ target_host }}"
   gather_facts: no
   become: yes
@@ -32,7 +35,7 @@
       become: no
       when: host_vars_stat.stat.exists
 
-    - name: Verificar o arquivo na home do usuario
+    - name: Verificar o arquivo
       ansible.builtin.stat:
-        path: "/home/{{ target_username }}/{{ relative_path }}"
+        path: "{{ full_path }}"
       register: file_stat

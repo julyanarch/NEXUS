@@ -253,40 +253,49 @@ def fetch_bash_history(target_host, username, max_lines=40):
     return {"status": "ok", "excerpt": "\n".join(redacted)}
 
 
-def check_home_file(target_host, username, relative_path):
-    """Confere se um arquivo/pasta especifico existe na home desse usuario no
-    servidor - so confirma presenca/ausencia (com tamanho e data de
-    modificacao quando existe), nao lista nem baixa nada.
-
-    relative_path e relativo a /home/<username>/ - quem chama e responsavel
-    por garantir que nao escapa dessa pasta (ver _safe_relative_path em
-    app.py), ja que isso roda com become (root) no servidor remoto.
+def check_home_file(target_host, username, full_path):
+    """Confere se um arquivo/pasta especifico existe no servidor - so confirma
+    presenca/ausencia (com tamanho e data de modificacao quando existe), nao
+    lista nem baixa nada. Sem restricao de caminho (proposital - so leitura,
+    quem usa o NEXUS ja tem acesso root nesses servidores via Ansible mesmo).
     """
     result = _run(PLAYBOOK_CHECK_FILE, {
         "target_host": target_host,
         "target_username": username,
-        "relative_path": relative_path,
+        "full_path": full_path,
         "host_vars_root": config.HOST_VARS_DIR,
     })
 
     if not result["success"]:
         return {"status": "error", "detail": summarize_result(result)}
 
+    # O Ansible emite mais de um evento pra essa task (ex.: "task start" antes
+    # de rodar, com res={}, e so depois o evento com o resultado de verdade).
+    # Pegar o primeiro evento que bater o nome da task (sem checar se "stat"
+    # realmente veio preenchido) pega o evento errado - sempre "nao existe",
+    # mesmo quando existe. Por isso: guarda so quando "stat" aparece de
+    # verdade no resultado, e so decide depois de varrer todos os eventos.
+    stat = None
     for event in result["runner"].events:
         event_data = event.get("event_data", {})
-        if event_data.get("task") == "Verificar o arquivo na home do usuario":
-            stat = event_data.get("res", {}).get("stat", {})
-            if not stat.get("exists"):
-                return {"status": "not_found"}
-            mtime = stat.get("mtime")
-            mtime_text = None
-            if mtime:
-                mtime_text = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone().isoformat(timespec="seconds")
-            return {
-                "status": "found",
-                "is_dir": bool(stat.get("isdir")),
-                "size": stat.get("size"),
-                "mtime_text": mtime_text,
-            }
+        if event_data.get("task") == "Verificar o arquivo":
+            res = event_data.get("res", {})
+            if "stat" in res:
+                stat = res["stat"]
 
-    return {"status": "error", "detail": "Nao foi possivel concluir a verificacao."}
+    if stat is None:
+        return {"status": "error", "detail": "Nao foi possivel concluir a verificacao."}
+
+    if not stat.get("exists"):
+        return {"status": "not_found"}
+
+    mtime = stat.get("mtime")
+    mtime_text = None
+    if mtime:
+        mtime_text = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone().isoformat(timespec="seconds")
+    return {
+        "status": "found",
+        "is_dir": bool(stat.get("isdir")),
+        "size": stat.get("size"),
+        "mtime_text": mtime_text,
+    }

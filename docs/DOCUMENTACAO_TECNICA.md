@@ -694,3 +694,38 @@ antigo (ex.: a linha "teste" criada durante os testes) fica órfão no banco, se
 
 Também: as descrições dos cards da tela de usuário foram enxugadas (frases curtas, sem repetir
 tudo em detalhe) - a pedido explícito de manter a interface mais direta.
+
+---
+
+## 28. Bug real: "Verificar arquivo" sempre dizia "não encontrado"
+
+Testado com um arquivo criado de propósito (`teste.txt`, via SSH direto na home de
+`julyana.silva`) - o NEXUS disse "não encontrado" mesmo com o arquivo comprovadamente lá
+(confirmado com `ls` na mesma sessão). Bug de verdade, não confusão de servidor.
+
+**Causa raiz:** o Ansible emite **mais de um evento** pra cada task - primeiro um evento de
+"início da task" (com `res` vazio, `{}`), e só depois o evento com o resultado real do módulo
+(`res` preenchido com o retorno do `stat`). `ansible_bridge.check_home_file()` varria os eventos e
+**retornava no primeiro que batesse o nome da task**, sem checar se aquele evento already tinha o
+resultado de verdade - ou seja, sempre pegava o evento vazio (`res={}`), onde
+`res.get("stat", {}).get("exists")` dá `None` (falso), e por isso sempre concluía "não existe",
+não importa o que houvesse no servidor. As demais funções que fazem esse mesmo tipo de varredura
+de eventos (`detect_sudo_nopasswd`, `fetch_bash_history`) não tinham esse problema por acidente -
+elas só decidem/retornam quando o campo relevante do resultado não é vazio, então acabam pulando o
+evento vazio sem perceber; a nova função retornava cedo demais, sem essa proteção.
+
+**Correção:** a varredura agora só considera um evento válido quando `"stat"` aparece de verdade
+dentro do `res` (`if "stat" in res`) - o evento vazio de início da task nunca tem essa chave, só o
+evento com o resultado real do módulo `stat`. A decisão (achou/não achou) só é tomada **depois**
+de varrer todos os eventos, não no primeiro que bater o nome da task.
+
+**Enquanto corrigia, também atendida a segunda parte do pedido** ("não coloque barreiras, é
+apenas para consulta"): a restrição contra `../` (que impedia sair da home do usuário) foi
+removida. Agora o campo aceita:
+- um caminho relativo (ex.: `relatorio.pdf`) → interpretado como dentro da home do usuário;
+- um caminho absoluto, começando com `/` (ex.: `/var/log/app.log`) → verificado como está, em
+  qualquer lugar do servidor.
+
+Continua sendo **só leitura** (`stat`, nunca lista conteúdo de pasta nem baixa nada) - a decisão de
+não restringir caminho é aceitável aqui porque quem opera o NEXUS já tem acesso root a esses
+servidores por outras vias (o próprio Ansible roda como root via `become`).

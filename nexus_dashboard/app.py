@@ -71,17 +71,17 @@ def servers_missing_vault():
     ]
 
 
-def _safe_relative_path(raw_path):
-    """Normaliza um caminho digitado pelo operador pra "verificar arquivo na
-    home" - None se vazio ou se tentar escapar da home (ex.: "../../etc/passwd"),
-    ja que isso roda com become (root) no servidor remoto."""
-    raw_path = (raw_path or "").strip().lstrip("/")
+def _resolve_check_path(username, raw_path):
+    """Resolve o caminho digitado em 'Verificar arquivo' pro caminho completo
+    a checar no servidor - sem restricao (proposital: e so consulta/leitura,
+    pra investigacao). Caminho comecando com "/" e usado como esta (absoluto);
+    qualquer outro e tratado como relativo a home do usuario."""
+    raw_path = (raw_path or "").strip()
     if not raw_path:
         return None
-    normalized = os.path.normpath(raw_path)
-    if normalized in ("", ".") or normalized.startswith(".."):
-        return None
-    return normalized
+    if raw_path.startswith("/"):
+        return raw_path
+    return f"/home/{username}/{raw_path}"
 
 
 def temp_password_errors(password):
@@ -517,12 +517,12 @@ def register_routes(app):
             flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de verificar arquivos.', "warning")
             return redirect(url_for("user_detail", user_id=user_id))
 
-        safe_path = _safe_relative_path(request.form.get("file_path", ""))
-        if not safe_path:
-            flash('Informe um caminho valido, relativo a home do usuario (sem "..").', "danger")
+        full_path = _resolve_check_path(user["username"], request.form.get("file_path", ""))
+        if not full_path:
+            flash("Informe um caminho.", "danger")
             return redirect(url_for("user_detail", user_id=user_id))
 
-        result = ansible_bridge.check_home_file(user["server_name"], user["username"], safe_path)
+        result = ansible_bridge.check_home_file(user["server_name"], user["username"], full_path)
         if result["status"] == "found":
             kind = "pasta" if result.get("is_dir") else "arquivo"
             details = []
@@ -531,20 +531,11 @@ def register_routes(app):
             if result.get("mtime_text"):
                 details.append(f'modificado em {result["mtime_text"]}')
             suffix = f" ({', '.join(details)})" if details else ""
-            flash(
-                f'Encontrado: "{safe_path}" existe na home de {user["username"]} em {user["server_name"]} ({kind}){suffix}.',
-                "success",
-            )
+            flash(f'Encontrado em {user["server_name"]}: "{full_path}" ({kind}){suffix}.', "success")
         elif result["status"] == "not_found":
-            flash(
-                f'Não encontrado: "{safe_path}" não existe na home de {user["username"]} em {user["server_name"]}.',
-                "warning",
-            )
+            flash(f'Não encontrado em {user["server_name"]}: "{full_path}".', "warning")
         else:
-            flash(
-                f'Falha ao verificar "{safe_path}" em {user["server_name"]}: {result.get("detail", "erro desconhecido")}.',
-                "danger",
-            )
+            flash(f'Falha ao verificar "{full_path}" em {user["server_name"]}: {result.get("detail", "erro desconhecido")}.', "danger")
         return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/history", methods=["POST"])
