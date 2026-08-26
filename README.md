@@ -14,10 +14,7 @@ necessário reconstruir o que foi feito, quando, por quem e com qual justificati
 
 ## Onde entra a IA integrada
 
-A proposta do projeto inclui uma IA própria, embutida no dashboard — **não** é a IA interna da
-empresa (por isso o projeto se chama NEXUS, e não mais CORTEX, evitando essa confusão) e não é uma
-IA externa via API paga.
-
+A proposta do projeto inclui uma IA própria, embutida no dashboard 
 É um motor de regras local (`nexus_dashboard/ai_engine.py`) que roda **dentro da aplicação em
 produção**: para cada usuário gerido, ele lê os dados já coletados (status, grupos/permissões,
 tempo bloqueado, criação, documentos vinculados, histórico de comandos) e gera, em tempo real, um

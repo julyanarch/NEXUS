@@ -1,8 +1,4 @@
-#smp que alterar o código no vscode para atualizar na vm, rodar:
 
-cd /media/sf_vm_pasta_compartilhada
-sudo cp nexus_sanitize_users.sh /opt/
-sudo /opt/nexus_sanitize_users.sh --csv /opt/usuarios.csv --dry-run
 ----------------------------------------------------------------------------------------------------------
 ---------------------- FLUXO COMO RODAR O PROJETO--------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------
