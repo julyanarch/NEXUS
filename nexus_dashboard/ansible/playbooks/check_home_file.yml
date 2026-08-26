@@ -1,0 +1,38 @@
+---
+# NEXUS Dashboard - confere se um arquivo/pasta especifico existe na home de
+# um usuario gerido, com tamanho e data de modificacao quando existe. So
+# confirma presenca/ausencia - nao lista o conteudo da pasta nem baixa nada.
+#
+# extra-vars esperadas:
+#   target_host      nome do host no inventario
+#   target_username   usuario cuja home sera verificada
+#   relative_path      caminho relativo a /home/<target_username>/
+#   host_vars_root      pasta local com host_vars/<servidor>/{vars,vault}.yml
+
+- name: NEXUS - Verificar arquivo na home do usuario
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+  tasks:
+    # host_vars_root fica fora de inventory/ e de playbooks/, entao o
+    # Ansible nao o descobre sozinho - precisa ser carregado explicitamente
+    # (senao "become" falha com "Missing sudo password" mesmo com a senha
+    # ja configurada na tela "senha sudo").
+    - name: Verificar se ha senha de sudo configurada para este servidor (controller)
+      ansible.builtin.stat:
+        path: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      delegate_to: localhost
+      become: no
+      register: host_vars_stat
+      changed_when: false
+
+    - name: Carregar senha de sudo do servidor (Ansible Vault, quando configurada)
+      ansible.builtin.include_vars:
+        dir: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      become: no
+      when: host_vars_stat.stat.exists
+
+    - name: Verificar o arquivo na home do usuario
+      ansible.builtin.stat:
+        path: "/home/{{ target_username }}/{{ relative_path }}"
+      register: file_stat

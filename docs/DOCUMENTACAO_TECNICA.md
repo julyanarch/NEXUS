@@ -642,3 +642,31 @@ rota `/users/<id>/force-removal` só aceita) quando `user.status == 'locked'`. F
 com o nome do botão e o texto do tooltip, que sempre falou em "sem esperar os N dias de bloqueio" -
 isso só existe pra quem já está bloqueado; pra usuário ativo, a forma de remover é a tela "Nova
 Ação" (ação `remove`/`purge`), não esse atalho.
+
+---
+
+## 26. "Documentos vinculados" x "Verificar arquivo na home" (nova funcionalidade)
+
+Dúvida do dono do projeto sobre como "Documentos vinculados" funciona: é só uma **anotação manual
+de auditoria** (tabela `documents`) - o operador digita tipo/referência/descrição livremente, o
+NEXUS só grava esse texto associado ao usuário (quem cadastrou, quando). Não sobe arquivo nenhum,
+não confere nada no servidor, não valida se a referência existe de verdade. Serve pra registrar
+"há um chamado CHG1002 relacionado a esse usuário", não pra confirmar presença de arquivo.
+
+O pedido era diferente: confirmar de verdade, no servidor, se um arquivo/pasta específico existe
+na home do usuário gerido - útil pra investigação (ex.: "esse ex-funcionário deixou algum arquivo
+sensível na home dele?"). Implementado como card novo "Verificar arquivo na home do usuário",
+separado de "Documentos vinculados":
+
+- **Playbook** `ansible/playbooks/check_home_file.yml`: mesmo padrão de carregar
+  `host_vars_root` explicitamente (seção 12) + `become: yes`, roda um `ansible.builtin.stat` em
+  `/home/<username>/<relative_path>`.
+- **`ansible_bridge.check_home_file()`**: lê o resultado do `stat` dos eventos do Ansible -
+  `not_found` se não existir, ou `found` com tamanho/data de modificação/se é pasta.
+- **Segurança:** `app._safe_relative_path()` normaliza o caminho digitado e rejeita qualquer
+  tentativa de escapar da home via `../` (ex.: `../../etc/passwd`) - já que essa checagem roda com
+  `become` (root) no servidor remoto, sem essa validação daria pra sondar a existência de qualquer
+  arquivo do sistema, não só da home do usuário.
+- **Resultado:** mostrado via flash message (achou/não achou/erro), sem guardar nada no banco -
+  se o operador quiser deixar um registro permanente do achado, usa "Documentos vinculados"
+  manualmente depois, como já fazia.

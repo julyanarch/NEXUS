@@ -71,6 +71,19 @@ def servers_missing_vault():
     ]
 
 
+def _safe_relative_path(raw_path):
+    """Normaliza um caminho digitado pelo operador pra "verificar arquivo na
+    home" - None se vazio ou se tentar escapar da home (ex.: "../../etc/passwd"),
+    ja que isso roda com become (root) no servidor remoto."""
+    raw_path = (raw_path or "").strip().lstrip("/")
+    if not raw_path:
+        return None
+    normalized = os.path.normpath(raw_path)
+    if normalized in ("", ".") or normalized.startswith(".."):
+        return None
+    return normalized
+
+
 def temp_password_errors(password):
     """Requisitos da senha temporaria de criacao de usuario. Retorna uma lista
     de pendencias (vazia se a senha atende tudo)."""
@@ -508,6 +521,35 @@ def register_routes(app):
             session["operator_name"],
         )
         flash("Documento vinculado.", "success")
+        return redirect(url_for("user_detail", user_id=user_id))
+
+    @app.route("/users/<int:user_id>/check-file", methods=["POST"])
+    @require_operator
+    def check_home_file(user_id):
+        user = models.get_user(user_id)
+        if not server_ready_for_actions(models.get_server(user["server_id"])):
+            flash(f'Configure a senha de sudo de "{user["server_name"]}" antes de verificar arquivos.', "warning")
+            return redirect(url_for("user_detail", user_id=user_id))
+
+        safe_path = _safe_relative_path(request.form.get("file_path", ""))
+        if not safe_path:
+            flash('Informe um caminho valido, relativo a home do usuario (sem "..").', "danger")
+            return redirect(url_for("user_detail", user_id=user_id))
+
+        result = ansible_bridge.check_home_file(user["server_name"], user["username"], safe_path)
+        if result["status"] == "found":
+            kind = "pasta" if result.get("is_dir") else "arquivo"
+            details = []
+            if result.get("size") is not None:
+                details.append(f'{result["size"]} bytes')
+            if result.get("mtime_text"):
+                details.append(f'modificado em {result["mtime_text"]}')
+            suffix = f" ({', '.join(details)})" if details else ""
+            flash(f'Encontrado: "{safe_path}" existe na home de {user["username"]} ({kind}){suffix}.', "success")
+        elif result["status"] == "not_found":
+            flash(f'Não encontrado: "{safe_path}" não existe na home de {user["username"]}.', "warning")
+        else:
+            flash(f'Falha ao verificar "{safe_path}": {result.get("detail", "erro desconhecido")}.', "danger")
         return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/history", methods=["POST"])

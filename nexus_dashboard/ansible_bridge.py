@@ -5,6 +5,7 @@ import re
 import shutil
 import tempfile
 import uuid
+from datetime import datetime, timezone
 
 import ansible_runner
 
@@ -15,6 +16,7 @@ PLAYBOOK_TEST = os.path.join(config.PLAYBOOKS_DIR, "test_connection.yml")
 PLAYBOOK_SANITIZE = os.path.join(config.PLAYBOOKS_DIR, "sanitize_users.yml")
 PLAYBOOK_HISTORY = os.path.join(config.PLAYBOOKS_DIR, "fetch_bash_history.yml")
 PLAYBOOK_DETECT_SUDO = os.path.join(config.PLAYBOOKS_DIR, "detect_sudo.yml")
+PLAYBOOK_CHECK_FILE = os.path.join(config.PLAYBOOKS_DIR, "check_home_file.yml")
 
 LEGACY_SCRIPT_COPY = os.path.join(config.ANSIBLE_DIR, "files", "nexus_sanitize_users.sh")
 
@@ -249,3 +251,42 @@ def fetch_bash_history(target_host, username, max_lines=40):
     tail = lines[-max_lines:]
     redacted = [_redact_history_line(l) for l in tail]
     return {"status": "ok", "excerpt": "\n".join(redacted)}
+
+
+def check_home_file(target_host, username, relative_path):
+    """Confere se um arquivo/pasta especifico existe na home desse usuario no
+    servidor - so confirma presenca/ausencia (com tamanho e data de
+    modificacao quando existe), nao lista nem baixa nada.
+
+    relative_path e relativo a /home/<username>/ - quem chama e responsavel
+    por garantir que nao escapa dessa pasta (ver _safe_relative_path em
+    app.py), ja que isso roda com become (root) no servidor remoto.
+    """
+    result = _run(PLAYBOOK_CHECK_FILE, {
+        "target_host": target_host,
+        "target_username": username,
+        "relative_path": relative_path,
+        "host_vars_root": config.HOST_VARS_DIR,
+    })
+
+    if not result["success"]:
+        return {"status": "error", "detail": summarize_result(result)}
+
+    for event in result["runner"].events:
+        event_data = event.get("event_data", {})
+        if event_data.get("task") == "Verificar o arquivo na home do usuario":
+            stat = event_data.get("res", {}).get("stat", {})
+            if not stat.get("exists"):
+                return {"status": "not_found"}
+            mtime = stat.get("mtime")
+            mtime_text = None
+            if mtime:
+                mtime_text = datetime.fromtimestamp(mtime, tz=timezone.utc).astimezone().isoformat(timespec="seconds")
+            return {
+                "status": "found",
+                "is_dir": bool(stat.get("isdir")),
+                "size": stat.get("size"),
+                "mtime_text": mtime_text,
+            }
+
+    return {"status": "error", "detail": "Nao foi possivel concluir a verificacao."}
