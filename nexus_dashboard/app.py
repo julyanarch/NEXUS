@@ -111,6 +111,7 @@ def register_routes(app):
             "lock_max_days": config.LOCK_MAX_DAYS,
             "lock_warning_days": config.LOCK_WARNING_DAYS,
             "temp_password_min_length": config.TEMP_PASSWORD_MIN_LENGTH,
+            "not_created_via_nexus": models.NOT_CREATED_VIA_NEXUS,
         }
 
     # --------------------------------------------------------------- home --

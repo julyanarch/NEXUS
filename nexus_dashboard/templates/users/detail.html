@@ -30,10 +30,10 @@
 <div class="card" style="margin-top:20px;">
   <h3 style="margin-top:0;">Fatos</h3>
   <div class="stat-row">
-    <div class="stat"><div class="value">{{ user.server_name }}</div><div class="label">Servidor</div></div>
+    <div class="stat"><div class="value">{{ user.server_name | clean_server_name }}</div><div class="label">Servidor</div></div>
     <div class="stat"><div class="value">{{ insights.created_by }}</div><div class="label">Criado por</div></div>
     <div class="stat"><div class="value">{{ insights.created_at }}</div><div class="label">Criado em</div></div>
-    <div class="stat"><div class="value">{{ insights.created_ticket or '-' }}</div><div class="label">Chamado de criação</div></div>
+    <div class="stat"><div class="value">{{ insights.created_ticket or user.ticket or '-' }}</div><div class="label">Chamado</div></div>
   </div>
   {% if user.ticket and user.ticket != insights.created_ticket %}
   <p class="muted">Chamado/motivo da ação mais recente: {{ user.ticket }}{% if user.reason %} ({{ user.reason }}){% endif %}</p>

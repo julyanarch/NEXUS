@@ -28,7 +28,7 @@
   <div class="table-scroll">
   <table>
     <thead>
-      <tr><th>Usuário</th><th>Servidor</th><th>IP</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
+      <tr><th>Usuário</th><th>Servidor</th><th>IP</th><th>Origem</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
     </thead>
     <tbody>
       {% for u in users %}
@@ -36,6 +36,13 @@
         <td>{{ u.username }}</td>
         <td>{{ u.server_name | clean_server_name }}</td>
         <td>{{ u.server_ip }}</td>
+        <td>
+          {% if u.created_by == not_created_via_nexus %}
+          <span class="badge badge-removed" title="Já existia no servidor antes de ser gerido pelo NEXUS">pré-existente</span>
+          {% else %}
+          <span class="badge badge-active" title="Criado através do NEXUS">NEXUS</span>
+          {% endif %}
+        </td>
         <td><span class="badge badge-{{ u.status }}">{{ u.status }}</span></td>
         <td>{{ u.days_locked if u.status == 'locked' else '-' }}</td>
         <td>{{ u.ticket or '-' }}</td>
@@ -43,7 +50,7 @@
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">detalhes / IA</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="muted">Nenhum usuário encontrado.</td></tr>
+      <tr><td colspan="9" class="muted">Nenhum usuário encontrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>

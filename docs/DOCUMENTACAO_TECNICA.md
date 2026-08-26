@@ -822,3 +822,26 @@ conforme mais ações eram registradas.
   (25) define o tamanho da página. A tela mostra números de página (com reticências quando há
   muitas), anterior/próxima, e "Página X de Y (Z execuções)" - preservando os filtros ativos ao
   trocar de página (`url_for('list_runs', page=N, **filters)`).
+
+
+---
+
+## 34. Tag de origem, "Chamado" ausente e alinhamento do card "Fatos"
+
+- **Tag de origem na lista de Usuarios:** nova coluna "Origem" com uma tag simples - `NEXUS`
+  (criado pelo dashboard) ou `pre-existente` (ja existia no servidor antes, ver secao 21) -
+  baseada em `created_by == models.NOT_CREATED_VIA_NEXUS`. A constante foi exposta globalmente
+  pros templates via `inject_globals()` (`not_created_via_nexus`).
+- **"Chamado" vazio no detalhe do usuario:** a caixa "Chamado de criacao" so mostrava
+  `created_ticket`, que fica `None` pra usuario nunca "criado" pelo NEXUS (secao 21) - mesmo tendo
+  um chamado real registrado na acao mais recente (`user.ticket`). Renomeada pra so "Chamado" e com
+  fallback: `insights.created_ticket or user.ticket or '-'` - mostra o chamado de criacao quando
+  existe, senao o da acao mais recente, so ficando `-` se realmente nao ha chamado nenhum
+  registrado.
+- **Alinhamento do card "Fatos":** `.stat-row` usava `flex:1`, que forcava toda caixa a crescer
+  pra mesma largura das outras - com um valor bem mais longo que os demais (ex.: "desconhecido
+  (usuario ja existia no servidor)"), a caixa maior distorcia a distribuicao e as caixas de
+  conteudo curto ficavam com espaco vazio desproporcional ao lado, parecendo desalinhadas. Trocado
+  por CSS Grid (`repeat(auto-fit, minmax(160px, 1fr))`, mesmo padrao ja usado em `.summary-grid`/
+  `.charts-grid`) + `overflow-wrap: break-word` no valor, pra cada caixa ficar num tamanho mais
+  previsivel e o texto longo quebrar dentro da propria caixa em vez de distorcer a linha toda.
