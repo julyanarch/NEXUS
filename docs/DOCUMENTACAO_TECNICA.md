@@ -888,3 +888,18 @@ Duas decisoes tomadas com o dono do projeto antes de implementar (ambas as opcoe
 - Usuarios importados (ativos ou bloqueados) recebem `created_by = models.NOT_CREATED_VIA_NEXUS`,
   igual ao caso ja existente de acao direta sem "criar" antes (secao 21) - e ja aparecem com a tag
   "pre-existente" na lista de Usuarios (secao 34).
+
+
+---
+
+## 36. Painel: "Usuarios bloqueados" mostra todos, com barra de progresso
+
+O card do Painel so mostrava usuario bloqueado com >= 80 dias (perto do limite) - com poucos dias
+de bloqueio (ex.: 1 dia), a lista aparecia vazia ("Nenhum usuario bloqueado proximo do limite"),
+mesmo tendo usuarios bloqueados de verdade.
+
+**Correcao:** o card passou a listar **todos** os usuarios bloqueados (nao so os proximos do
+limite), cada um com uma barra de progresso ate os 90 dias (reaproveita a classe `.progress` ja
+usada na pagina de detalhe do usuario) - mais urgente primeiro. Usuario com `lock_review_needed`
+(importado com data de bloqueio desconhecida, secao 35) aparece com a tag "revisao pendente" no
+lugar da barra, ja que nao ha dias pra mostrar, e fica sempre no fim da lista.

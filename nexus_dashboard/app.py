@@ -120,13 +120,16 @@ def register_routes(app):
     @app.route("/")
     def dashboard():
         counts = models.summary_counts()
-        expiring_users = [
-            u for u in models.list_locked_users()
-            if not u["lock_review_needed"] and (u["days_locked"] or 0) >= config.LOCK_WARNING_DAYS
-        ]
+        # Mais urgente primeiro (mais dias bloqueado); quem precisa de
+        # revisao manual (sem data de bloqueio conhecida - ver secao 35 da
+        # documentacao tecnica) vai pro fim, ja que nao tem dias pra ordenar.
+        locked_users = sorted(
+            models.list_locked_users(),
+            key=lambda u: (bool(u["lock_review_needed"]), -(u["days_locked"] or 0)),
+        )
         recent_runs, _ = models.list_recent_runs(limit=10)
         return render_template(
-            "dashboard.html", counts=counts, expiring_users=expiring_users, recent_runs=recent_runs,
+            "dashboard.html", counts=counts, locked_users=locked_users, recent_runs=recent_runs,
             status_chart=charts.build_status_chart(counts),
             timeline_chart=charts.build_timeline_chart(),
             server_chart=charts.build_server_chart(),

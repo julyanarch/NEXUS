@@ -243,6 +243,18 @@ td.wrap { white-space: normal; }
 .progress > div { height: 100%; background: linear-gradient(90deg, var(--purple), var(--purple-dark)); }
 .progress.urgent > div { background: linear-gradient(90deg, var(--danger), #b91c1c); }
 
+/* Lista "Usuarios bloqueados" do Painel - uma linha por usuario, com barra
+   de progresso ate o limite de remocao automatica (reaproveita .progress). */
+.locked-list { display: flex; flex-direction: column; gap: 12px; }
+.locked-row { display: flex; align-items: center; gap: 12px; }
+.locked-row-label {
+  width: 160px; flex-shrink: 0; font-size: 0.85rem; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.locked-row-label .muted { display: block; font-size: 0.72rem; }
+.locked-row .progress { flex: 1; margin: 0; }
+.locked-row-days { width: 90px; flex-shrink: 0; font-size: 0.8rem; color: var(--text-muted); text-align: right; }
+
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-group label { font-size: 0.85rem; color: var(--text-muted); }

@@ -104,26 +104,28 @@
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0;">Usuários bloqueados próximos da remoção automática</h3>
-  {% if expiring_users %}
-  <div class="table-scroll">
-  <table>
-    <thead><tr><th>Usuário</th><th>Servidor</th><th>Dias bloqueado</th><th>Dias restantes</th><th></th></tr></thead>
-    <tbody>
-      {% for u in expiring_users %}
-      <tr>
-        <td>{{ u.username }}</td>
-        <td>{{ u.server_name | clean_server_name }}</td>
-        <td>{{ u.days_locked }}</td>
-        <td>{{ lock_max_days - (u.days_locked or 0) }}</td>
-        <td><a href="{{ url_for('user_detail', user_id=u.id) }}">ver detalhes</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <h3 style="margin-top:0;">Usuários bloqueados</h3>
+  <p class="chart-caption">Dias bloqueado até o limite de {{ lock_max_days }} dias (remoção automática)</p>
+  {% if locked_users %}
+  <div class="locked-list">
+    {% for u in locked_users %}
+    <div class="locked-row">
+      <a class="locked-row-label" href="{{ url_for('user_detail', user_id=u.id) }}" title="{{ u.username }} — {{ u.server_name | clean_server_name }}">
+        {{ u.username }}<span class="muted">{{ u.server_name | clean_server_name }}</span>
+      </a>
+      {% if u.lock_review_needed %}
+      <span class="badge badge-locked" title="Bloqueio anterior ao NEXUS, data desconhecida - precisa de revisão manual">revisão pendente</span>
+      {% else %}
+      <div class="progress {{ 'urgent' if (u.days_locked or 0) >= lock_warning_days }}">
+        <div style="width: {{ ((u.days_locked or 0) / lock_max_days * 100) | round(1) }}%;"></div>
+      </div>
+      <span class="locked-row-days">{{ u.days_locked or 0 }} / {{ lock_max_days }} dias</span>
+      {% endif %}
+    </div>
+    {% endfor %}
   </div>
   {% else %}
-  <p class="muted">Nenhum usuário bloqueado próximo do limite de {{ lock_max_days }} dias.</p>
+  <p class="muted">Nenhum usuário bloqueado no momento.</p>
   {% endif %}
 </div>
 
