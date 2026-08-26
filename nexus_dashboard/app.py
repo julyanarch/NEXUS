@@ -112,6 +112,7 @@ def register_routes(app):
             "lock_warning_days": config.LOCK_WARNING_DAYS,
             "temp_password_min_length": config.TEMP_PASSWORD_MIN_LENGTH,
             "not_created_via_nexus": models.NOT_CREATED_VIA_NEXUS,
+            "discover_min_uid": config.DISCOVER_MIN_UID,
         }
 
     # --------------------------------------------------------------- home --
@@ -121,7 +122,7 @@ def register_routes(app):
         counts = models.summary_counts()
         expiring_users = [
             u for u in models.list_locked_users()
-            if (u["days_locked"] or 0) >= config.LOCK_WARNING_DAYS
+            if not u["lock_review_needed"] and (u["days_locked"] or 0) >= config.LOCK_WARNING_DAYS
         ]
         recent_runs, _ = models.list_recent_runs(limit=10)
         return render_template(
@@ -311,6 +312,33 @@ def register_routes(app):
             _warn_duplicate_host(ssh_host, exclude_id=server_id)
             return redirect(url_for("list_servers"))
         return render_template("servers/form.html", server=server)
+
+    @app.route("/servers/<int:server_id>/discover-users", methods=["POST"])
+    @require_operator
+    def discover_server_users(server_id):
+        server = models.get_server(server_id)
+        if not server_ready_for_actions(server):
+            flash(f'Configure a senha de sudo de "{server["name"]}" antes de importar usuários.', "warning")
+            return redirect(url_for("edit_server", server_id=server_id))
+
+        result = ansible_bridge.discover_existing_users(server["name"])
+        if result["status"] != "ok":
+            flash(f'Falha ao consultar "{server["name"]}": {result.get("detail", "erro desconhecido")}.', "danger")
+            return redirect(url_for("edit_server", server_id=server_id))
+
+        found = result["users"]
+        inserted = models.import_discovered_users(server_id, found, session["operator_name"])
+        locked_count = sum(1 for u in found if u["locked"])
+        skipped = len(found) - inserted
+        flash(
+            f'"{server["name"]}": {len(found)} usuário(s) encontrado(s) no servidor '
+            f'({locked_count} bloqueado(s)) - {inserted} novo(s) importado(s) pro NEXUS'
+            + (f", {skipped} já eram conhecidos." if skipped else ".")
+            + (' Bloqueados importados precisam de revisão manual em "Usuários" antes de contarem '
+               "pra remoção automática de 90 dias." if any(u["locked"] for u in found) and inserted else ""),
+            "success",
+        )
+        return redirect(url_for("edit_server", server_id=server_id))
 
     @app.route("/servers/<int:server_id>/delete", methods=["POST"])
     @require_operator
@@ -510,6 +538,21 @@ def register_routes(app):
         return render_template(
             "users/detail.html", user=user, insights=insights, timeline=timeline,
         )
+
+    @app.route("/users/<int:user_id>/confirm-lock", methods=["POST"])
+    @require_operator
+    def confirm_lock(user_id):
+        user = models.get_user(user_id)
+        if user is None or user["status"] != "locked" or not user["lock_review_needed"]:
+            flash("Nada para confirmar nesse usuário.", "warning")
+            return redirect(url_for("user_detail", user_id=user_id))
+        models.confirm_lock_start(user_id, session["operator_name"])
+        flash(
+            f'Contagem de {config.LOCK_MAX_DAYS} dias iniciada agora para "{user["username"]}" '
+            "(a data real de bloqueio, anterior ao NEXUS, não é conhecida).",
+            "success",
+        )
+        return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/check-file", methods=["POST"])
     @require_operator

@@ -47,4 +47,18 @@
     {% endif %}
   </form>
 </div>
+
+{% if server %}
+<div class="card" style="max-width:560px;">
+  <h3 style="margin-top:0;">Importar usuários existentes</h3>
+  <p class="muted">
+    Traz pro NEXUS os usuários que já existem em "{{ server.name }}" (uid ≥ {{ discover_min_uid }},
+    contas de gente) e nunca passaram por aqui - não cria, altera nem remove nada no servidor, só
+    lê. Usuário já conhecido pelo NEXUS não é duplicado.
+  </p>
+  <form method="post" action="{{ url_for('discover_server_users', server_id=server.id) }}">
+    <button class="btn btn-outline" type="submit">Importar usuários existentes</button>
+  </form>
+</div>
+{% endif %}
 {% endblock %}

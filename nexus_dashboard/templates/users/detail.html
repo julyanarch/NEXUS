@@ -39,7 +39,18 @@
   <p class="muted">Chamado/motivo da ação mais recente: {{ user.ticket }}{% if user.reason %} ({{ user.reason }}){% endif %}</p>
   {% endif %}
 
-  {% if user.status == 'locked' %}
+  {% if user.status == 'locked' and insights.lock_review_needed %}
+  <div style="margin-top:10px;">
+    <div class="muted">
+      Bloqueio anterior ao NEXUS - data real desconhecida, não conta pra remoção automática de
+      {{ lock_max_days }} dias até confirmar.
+    </div>
+    <form method="post" action="{{ url_for('confirm_lock', user_id=user.id) }}" style="margin-top:8px;"
+          data-confirm="Iniciar a contagem de {{ lock_max_days }} dias a partir de agora pra {{ user.username }}?">
+      <button class="btn btn-sm btn-outline" type="submit">Confirmar e iniciar contagem agora</button>
+    </form>
+  </div>
+  {% elif user.status == 'locked' %}
   <div style="margin-top:10px;">
     <div class="muted">Dias bloqueado: {{ insights.days_locked }} / {{ lock_max_days }} — restam {{ insights.days_remaining }} dia(s) até a remoção automática</div>
     <div class="progress {{ 'urgent' if insights.urgency }}">

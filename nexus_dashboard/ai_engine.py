@@ -24,10 +24,11 @@ def build_user_insights(managed_user_row):
 
     groups = [g for g in (user["groups_csv"] or "").split(";") if g]
 
+    lock_review_needed = bool(user["lock_review_needed"]) and user["status"] == "locked"
     days_locked = None
     days_remaining = None
     urgency = False
-    if user["status"] == "locked":
+    if user["status"] == "locked" and not lock_review_needed:
         days_locked = int(user["days_locked"]) if user["days_locked"] is not None else 0
         days_remaining = max(config.LOCK_MAX_DAYS - days_locked, 0)
         urgency = days_remaining <= (config.LOCK_MAX_DAYS - config.LOCK_WARNING_DAYS)
@@ -57,6 +58,7 @@ def build_user_insights(managed_user_row):
         "created_at": _format_datetime(user["created_at"]),
         "created_by": user["created_by"],
         "locked_at": _format_datetime(user["locked_at"]),
+        "lock_review_needed": lock_review_needed,
         "days_locked": days_locked,
         "days_remaining": days_remaining,
         "urgency": urgency,
@@ -77,6 +79,13 @@ def _build_summary(facts):
     comandos executados" logo abaixo, repetir tudo aqui so poluia a tela."""
     if facts["status"] == "active":
         return f"{facts['username']} esta ativo em {facts['server_name']}."
+
+    if facts["status"] == "locked" and facts["lock_review_needed"]:
+        return (
+            f"{facts['username']} esta bloqueado, mas ja estava assim antes de ser gerido pelo "
+            "NEXUS - a data real do bloqueio e desconhecida, entao nao conta pra remocao "
+            "automatica ate alguem confirmar manualmente."
+        )
 
     if facts["status"] == "locked":
         summary = (

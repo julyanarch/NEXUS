@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS managed_users (
     removed_at TEXT,
     removed_by TEXT,
     removal_type TEXT CHECK (removal_type IN ('manual', 'automatic')),
+    lock_review_needed INTEGER NOT NULL DEFAULT 0,
     updated_at TEXT NOT NULL,
     UNIQUE (username, server_id)
 );

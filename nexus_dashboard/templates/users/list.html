@@ -44,7 +44,13 @@
           {% endif %}
         </td>
         <td><span class="badge badge-{{ u.status }}">{{ u.status }}</span></td>
-        <td>{{ u.days_locked if u.status == 'locked' else '-' }}</td>
+        <td>
+          {% if u.status == 'locked' and u.lock_review_needed %}
+          <span class="badge badge-locked" title="Bloqueio anterior ao NEXUS, data desconhecida - precisa de revisão manual">revisão pendente</span>
+          {% elif u.status == 'locked' %}
+          {{ u.days_locked }}
+          {% else %}-{% endif %}
+        </td>
         <td>{{ u.ticket or '-' }}</td>
         <td>{{ u.created_at }}</td>
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">detalhes / IA</a></td>

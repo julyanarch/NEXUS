@@ -27,6 +27,11 @@ def run_lock_expiry_check():
 
     for user in models.list_locked_users():
         users_checked += 1
+        if user["lock_review_needed"]:
+            # Bloqueio importado de fora do NEXUS (usuario ja existia
+            # bloqueado no servidor) - data real desconhecida, nunca conta
+            # pra remocao automatica ate revisao manual (confirm_lock_start).
+            continue
         days_locked = user["days_locked"] or 0
         if days_locked < config.LOCK_MAX_DAYS:
             continue

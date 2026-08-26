@@ -845,3 +845,46 @@ conforme mais ações eram registradas.
   por CSS Grid (`repeat(auto-fit, minmax(160px, 1fr))`, mesmo padrao ja usado em `.summary-grid`/
   `.charts-grid`) + `overflow-wrap: break-word` no valor, pra cada caixa ficar num tamanho mais
   previsivel e o texto longo quebrar dentro da propria caixa em vez de distorcer a linha toda.
+
+
+---
+
+## 35. Importar usuarios que ja existiam no servidor antes do NEXUS
+
+O Painel/Usuarios so contavam usuarios que passaram por alguma acao do NEXUS - servidor com anos
+de uso real tem muito mais contas do que isso mostra. Pedido: trazer pro NEXUS os usuarios reais
+que ja existiam nos servidores geridos, sem depender de ter sido criado/bloqueado/removido por
+aqui.
+
+Duas decisoes tomadas com o dono do projeto antes de implementar (ambas as opcoes recomendadas):
+
+1. **Gatilho: botao manual por servidor**, nao automatico - fica na tela de editar servidor
+   ("Importar usuarios existentes"), pra rodar quando quiser e conferir o resultado, servidor por
+   servidor.
+2. **Usuario bloqueado importado nao conta pra remocao automatica de 90 dias ate revisao manual.**
+   O Linux nao guarda de forma confiavel *quando* uma conta foi bloqueada (so *que* esta
+   bloqueada) - contar a partir de "agora" arriscaria atrasar remocoes que ja deveriam ter
+   acontecido ha muito, e chutar uma data no passado seria pior ainda (risco de remover cedo
+   demais uma conta real). Em vez disso: a conta entra bloqueada, mas com `locked_at = NULL` e
+   `lock_review_needed = 1` - o agendador (`scheduler.py`) pula explicitamente qualquer usuario
+   com essa flag (nao depende so do calculo de dias virar 0 por acaso). A tela mostra "revisao
+   pendente" em vez de uma contagem de dias inventada, com um botao "Confirmar e iniciar contagem
+   agora" (`confirm_lock_start()`) - so ai `locked_at` vira a data da confirmacao (a unica que se
+   tem certeza) e a conta passa a contar normalmente pros 90 dias.
+
+**Como funciona:**
+
+- `ansible/playbooks/discover_existing_users.yml`: um unico `awk` em `/etc/passwd` (filtra
+  `uid >= min_uid` - padrao `config.DISCOVER_MIN_UID = 1000`, convencao usual pra distinguir de
+  contas de sistema/servico - e shell interativo, exclui `nologin`/`false`) + `passwd -S` por
+  usuario pra status (`L` = bloqueado). So leitura, nao mexe em nada no servidor.
+- `ansible_bridge.discover_existing_users()`: roda o playbook e parseia a saida.
+- `models.import_discovered_users()`: insere em `managed_users` so quem o NEXUS ainda nao
+  conhecia (por username+server_id) - nunca sobrescreve um usuario ja cadastrado. Retorna quantos
+  foram novos.
+- Nova coluna `managed_users.lock_review_needed` (migracao em `_migrate_schema()`).
+- Botao em `servers/form.html` (tela de editar servidor), rota
+  `/servers/<id>/discover-users` - mostra quantos foram encontrados/importados via flash.
+- Usuarios importados (ativos ou bloqueados) recebem `created_by = models.NOT_CREATED_VIA_NEXUS`,
+  igual ao caso ja existente de acao direta sem "criar" antes (secao 21) - e ja aparecem com a tag
+  "pre-existente" na lista de Usuarios (secao 34).

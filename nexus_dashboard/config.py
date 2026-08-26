@@ -61,6 +61,12 @@ SERVER_CHART_WINDOW_DAYS = 30
 # Quantas linhas por pagina na tela Execucoes.
 RUNS_PER_PAGE = 25
 
+# Menor UID considerado usuario "de gente" (nao conta de sistema/servico) na
+# descoberta de usuarios ja existentes no servidor ("Importar usuarios
+# existentes") - convencao usual do useradd/login.defs na maioria das
+# distros Linux.
+DISCOVER_MIN_UID = 1000
+
 SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET", "nexus-dashboard-dev-secret")
 
 # Depois de quanto tempo sem trocar a identificacao de operador (tela

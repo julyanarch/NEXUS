@@ -70,6 +70,11 @@ def _migrate_schema():
         conn.execute("ALTER TABLE servers ADD COLUMN decommission_reason TEXT")
         conn.commit()
     _archive_decommissioned_names(conn)
+
+    managed_users_columns = {row["name"] for row in conn.execute("PRAGMA table_info(managed_users)").fetchall()}
+    if "lock_review_needed" not in managed_users_columns:
+        conn.execute("ALTER TABLE managed_users ADD COLUMN lock_review_needed INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
     conn.close()
 
 
@@ -394,6 +399,67 @@ def upsert_user_after_action(username, server_id, action, groups_csv, shell, hom
                     (username, server_id, groups_csv, shell, home_policy, ticket, reason,
                      ts, NOT_CREATED_VIA_NEXUS, ts, performed_by, ts),
                 )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def import_discovered_users(server_id, discovered_users, performed_by):
+    """Registra em managed_users os usuarios reais encontrados no servidor
+    (ver ansible_bridge.discover_existing_users()) que o NEXUS ainda nao
+    conhecia - nunca sobrescreve quem ja esta cadastrado (por username+
+    server_id). Usuario bloqueado entra com locked_at=NULL e
+    lock_review_needed=1: a data real de quando foi bloqueado e desconhecida
+    (o Linux nao guarda isso de forma confiavel), entao NAO deve contar pra
+    remocao automatica de 90 dias ate alguem confirmar manualmente via
+    confirm_lock_start() - ver tambem o filtro explicito em
+    scheduler.run_lock_expiry_check().
+
+    Retorna quantos usuarios foram realmente inseridos (novos)."""
+    conn = get_db()
+    inserted = 0
+    try:
+        ts = now_iso()
+        for u in discovered_users:
+            existing = conn.execute(
+                "SELECT id FROM managed_users WHERE username=? AND server_id=?",
+                (u["username"], server_id),
+            ).fetchone()
+            if existing:
+                continue
+            if u["locked"]:
+                conn.execute(
+                    """INSERT INTO managed_users
+                       (username, server_id, status, shell, created_at, created_by,
+                        lock_review_needed, updated_at)
+                       VALUES (?, ?, 'locked', ?, ?, ?, 1, ?)""",
+                    (u["username"], server_id, u["shell"], ts, NOT_CREATED_VIA_NEXUS, ts),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO managed_users
+                       (username, server_id, status, shell, created_at, created_by, updated_at)
+                       VALUES (?, ?, 'active', ?, ?, ?, ?)""",
+                    (u["username"], server_id, u["shell"], ts, NOT_CREATED_VIA_NEXUS, ts),
+                )
+            inserted += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return inserted
+
+
+def confirm_lock_start(user_id, performed_by):
+    """Revisao manual de um bloqueio importado (lock_review_needed=1, ver
+    import_discovered_users): a partir de agora, esse bloqueio passa a
+    contar pra remocao automatica de 90 dias, com locked_at = agora (unica
+    data que se tem certeza - a real e desconhecida)."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE managed_users SET locked_at=?, lock_review_needed=0, updated_at=? WHERE id=?",
+            (now_iso(), now_iso(), user_id),
+        )
         conn.commit()
     finally:
         conn.close()

@@ -17,6 +17,7 @@ PLAYBOOK_SANITIZE = os.path.join(config.PLAYBOOKS_DIR, "sanitize_users.yml")
 PLAYBOOK_HISTORY = os.path.join(config.PLAYBOOKS_DIR, "fetch_bash_history.yml")
 PLAYBOOK_DETECT_SUDO = os.path.join(config.PLAYBOOKS_DIR, "detect_sudo.yml")
 PLAYBOOK_CHECK_FILE = os.path.join(config.PLAYBOOKS_DIR, "check_home_file.yml")
+PLAYBOOK_DISCOVER_USERS = os.path.join(config.PLAYBOOKS_DIR, "discover_existing_users.yml")
 
 LEGACY_SCRIPT_COPY = os.path.join(config.ANSIBLE_DIR, "files", "nexus_sanitize_users.sh")
 
@@ -299,3 +300,43 @@ def check_home_file(target_host, username, full_path):
         "size": stat.get("size"),
         "mtime_text": mtime_text,
     }
+
+
+def discover_existing_users(target_host, min_uid=None):
+    """Lista usuarios "de gente" (uid >= min_uid, shell interativo - exclui
+    contas de sistema/servico) ja existentes no servidor, com status ativo/
+    bloqueado (via `passwd -S`) - pra "Importar usuarios existentes". So
+    leitura, nao altera nada no servidor."""
+    result = _run(PLAYBOOK_DISCOVER_USERS, {
+        "target_host": target_host,
+        "min_uid": min_uid if min_uid is not None else config.DISCOVER_MIN_UID,
+        "host_vars_root": config.HOST_VARS_DIR,
+    })
+
+    if not result["success"]:
+        return {"status": "error", "detail": summarize_result(result), "users": []}
+
+    stdout = None
+    for event in result["runner"].events:
+        event_data = event.get("event_data", {})
+        if event_data.get("task") == "Listar usuarios reais do servidor":
+            res = event_data.get("res", {})
+            if "stdout" in res:
+                stdout = res["stdout"]
+
+    if stdout is None:
+        return {"status": "error", "detail": "Nao foi possivel concluir a descoberta.", "users": []}
+
+    users = []
+    for line in stdout.splitlines():
+        parts = line.strip().split(",")
+        if len(parts) != 4:
+            continue
+        username, uid, shell, pw_status = parts
+        users.append({
+            "username": username,
+            "uid": uid,
+            "shell": shell,
+            "locked": pw_status.strip() == "L",
+        })
+    return {"status": "ok", "users": users, "detail": None}

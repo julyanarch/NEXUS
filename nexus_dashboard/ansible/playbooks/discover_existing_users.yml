@@ -1,0 +1,50 @@
+---
+# NEXUS Dashboard - lista usuarios "de gente" (uid >= min_uid, shell
+# interativo - exclui contas de sistema/servico) ja existentes no servidor,
+# com status ativo/bloqueado, pra "Importar usuarios existentes". So leitura
+# (awk em /etc/passwd + `passwd -S` por usuario) - nao cria, altera nem
+# remove nada.
+#
+# extra-vars esperadas:
+#   target_host   nome do host no inventario
+#   min_uid        menor UID considerado usuario "de gente" (padrao: 1000,
+#                   convencao usual do useradd pra distinguir de contas de
+#                   sistema/servico)
+#   host_vars_root  pasta local com host_vars/<servidor>/{vars,vault}.yml
+
+- name: NEXUS - Descobrir usuarios existentes no servidor
+  hosts: "{{ target_host }}"
+  gather_facts: no
+  become: yes
+  tasks:
+    # host_vars_root fica fora de inventory/ e de playbooks/, entao o
+    # Ansible nao o descobre sozinho - precisa ser carregado explicitamente
+    # (senao "become" falha com "Missing sudo password" mesmo com a senha
+    # ja configurada na tela "senha sudo").
+    - name: Verificar se ha senha de sudo configurada para este servidor (controller)
+      ansible.builtin.stat:
+        path: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      delegate_to: localhost
+      become: no
+      register: host_vars_stat
+      changed_when: false
+
+    - name: Carregar senha de sudo do servidor (Ansible Vault, quando configurada)
+      ansible.builtin.include_vars:
+        dir: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      become: no
+      when: host_vars_stat.stat.exists
+
+    - name: Listar usuarios reais do servidor
+      ansible.builtin.shell: |
+        set -o pipefail
+        awk -F: -v minuid="{{ min_uid }}" \
+          '($3 >= minuid) && ($3 != 65534) && ($7 !~ /(nologin|false)$/) {print $1","$3","$7}' \
+          /etc/passwd | while IFS=, read -r nx_user nx_uid nx_shell; do
+            nx_status=$(passwd -S "$nx_user" 2>/dev/null | awk '{print $2}')
+            echo "${nx_user},${nx_uid},${nx_shell},${nx_status}"
+          done
+      args:
+        executable: /bin/bash
+      register: discovery_result
+      changed_when: false
