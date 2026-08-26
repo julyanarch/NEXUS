@@ -425,3 +425,36 @@ gravado, e recadastrar com o mesmo nome falha do mesmo jeito. `_archive_decommis
 resolve isso retroativamente, uma vez, toda vez que a app sobe (`models.init_db()` →
 `_migrate_schema()`): varre os servidores já decomissionados e arquiva o nome de quem ainda não
 tinha sido arquivado.
+
+---
+
+## 16. Responsividade — a página não deveria precisar de rolagem lateral
+
+Antes, o layout não tinha nenhuma media query, faltava a tag `<meta name="viewport">`, e a área de
+conteúdo (`.main`) era um item flex ao lado da barra lateral **sem `min-width: 0`** — que é o
+detalhe que faz toda a diferença: por padrão, um item flex nunca encolhe além do tamanho do seu
+conteúdo mais largo, então uma única tabela larga (ex.: Execuções, com 9 colunas) empurrava a
+`.main` inteira, e com ela a página toda, para rolar na horizontal — mesmo as tabelas que já tinham
+um `<div class="table-scroll">` por dentro não adiantavam nada, porque quem estourava a largura era
+o contêiner de fora, não a tabela.
+
+**O que mudou:**
+
+- `.main { min-width: 0; }` — deixa a área de conteúdo encolher de verdade; qualquer coisa larga
+  demais por dentro agora fica confinada ali, não empurra a página.
+- `html, body { overflow-x: hidden; }` — a página em si nunca rola pro lado. Se algo específico
+  precisar rolar (uma tabela genuinamente larga numa janela muito estreita), é o próprio
+  `.table-scroll` daquele bloco que rola, sem arrastar o resto da tela (barra lateral, cabeçalho)
+  junto.
+- `<meta name="viewport">` adicionado (não existia) - sem ela, navegadores mobile renderizam a
+  página como se fosse desktop e depois encolhem tudo, o que também atrapalha.
+- Tabelas com `<div class="table-scroll">` em toda a aplicação (Servidores, Usuários, Execuções,
+  Painel, Documentos), como rede de segurança - normalmente não deveria mais precisar rolar, mas
+  se precisar, só aquele bloco rola.
+- Fontes e paddings de tabela reduzidos (`0.9rem`→`0.85rem`, `10px 12px`→`8px 10px`) e o grid de
+  botões de ação (seção 14) ficou mais compacto - menos largura ocupada por linha em todo lugar.
+- Abaixo de 960px de largura, a barra lateral vira uma faixa horizontal no topo em vez de ficar do
+  lado, liberando a largura toda pro conteúdo (notebook menor, janela redimensionada, tablet).
+- Nome de servidor decomissionado (seção 13) pode ficar bem comprido (`nome [excluído <data>]`) —
+  isso sozinho alargaria a coluna. Agora trunca com reticências (`.truncate`), com o nome completo
+  disponível no tooltip (passar o mouse por cima).

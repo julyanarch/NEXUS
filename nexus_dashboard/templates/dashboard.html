@@ -106,13 +106,14 @@
 <div class="card">
   <h3 style="margin-top:0;">Usuários bloqueados próximos da remoção automática</h3>
   {% if expiring_users %}
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Usuário</th><th>Servidor</th><th>Dias bloqueado</th><th>Dias restantes</th><th></th></tr></thead>
     <tbody>
       {% for u in expiring_users %}
       <tr>
         <td>{{ u.username }}</td>
-        <td>{{ u.server_name }}</td>
+        <td><span class="truncate" title="{{ u.server_name }}">{{ u.server_name }}</span></td>
         <td>{{ u.days_locked }}</td>
         <td>{{ lock_max_days - (u.days_locked or 0) }}</td>
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">ver detalhes</a></td>
@@ -120,6 +121,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="muted">Nenhum usuário bloqueado próximo do limite de {{ lock_max_days }} dias.</p>
   {% endif %}
@@ -128,13 +130,14 @@
 <div class="card">
   <h3 style="margin-top:0;">Execuções recentes</h3>
   {% if recent_runs %}
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Quando</th><th>Servidor</th><th>Usuário</th><th>Ação</th><th>Modo</th><th>Status</th><th>Por</th></tr></thead>
     <tbody>
       {% for r in recent_runs %}
       <tr>
         <td>{{ r.performed_at }}</td>
-        <td>{{ r.server_name or '-' }}</td>
+        <td><span class="truncate" title="{{ r.server_name or '' }}">{{ r.server_name or '-' }}</span></td>
         <td>{{ r.username }}</td>
         <td>{{ r.action }}</td>
         <td>{{ r.mode }}</td>
@@ -144,6 +147,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   <p class="muted" style="margin-top:10px;"><a href="{{ url_for('list_runs') }}">Ver detalhe/erro de cada execução em Execuções →</a></p>
   {% else %}
   <p class="muted">Nenhuma execução registrada ainda.</p>

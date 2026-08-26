@@ -72,6 +72,7 @@
 <div class="card">
   <h3 style="margin-top:0;">Documentos vinculados</h3>
   {% if documents %}
+  <div class="table-scroll">
   <table>
     <thead><tr><th>Tipo</th><th>Referência</th><th>Descrição</th><th>Enviado por</th><th>Quando</th></tr></thead>
     <tbody>
@@ -79,13 +80,14 @@
       <tr>
         <td>{{ d.doc_type }}</td>
         <td>{{ d.reference }}</td>
-        <td>{{ d.description or '-' }}</td>
+        <td class="wrap">{{ d.description or '-' }}</td>
         <td>{{ d.uploaded_by }}</td>
         <td>{{ d.uploaded_at }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p class="muted">Nenhum documento vinculado ainda.</p>
   {% endif %}

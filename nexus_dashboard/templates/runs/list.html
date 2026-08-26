@@ -12,7 +12,7 @@
       {% for r in runs %}
       <tr>
         <td>{{ r.performed_at }}</td>
-        <td>{{ r.server_name or '-' }}</td>
+        <td><span class="truncate" title="{{ r.server_name or '' }}">{{ r.server_name or '-' }}</span></td>
         <td>{{ r.username or '-' }}</td>
         <td>{{ r.action }}</td>
         <td>{{ r.mode }}</td>
@@ -21,7 +21,7 @@
         <td>{{ r.performed_by }}</td>
         <td>
           {% if r.message %}
-          <span style="max-width:420px; display:inline-block; white-space:normal;">{{ r.message }}</span>
+          <span style="max-width:300px; display:inline-block; white-space:normal;">{{ r.message }}</span>
           {% else %}
           <span class="muted">-</span>
           {% endif %}

@@ -16,6 +16,14 @@
 
 * { box-sizing: border-box; }
 
+html, body {
+  /* A pagina inteira nunca rola pro lado - se algum conteudo especifico for
+     largo demais (ex.: uma tabela), so ele rola, dentro do .table-scroll -
+     ver mais abaixo. */
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", Roboto, Arial, sans-serif;
@@ -30,11 +38,31 @@ a:hover { text-decoration: underline; }
 .layout { display: flex; min-height: 100vh; }
 
 .sidebar {
-  width: 230px;
+  width: 200px;
   background: linear-gradient(180deg, var(--purple-deep), #0b0710 85%);
   border-right: 1px solid var(--border);
   padding: 20px 16px;
   flex-shrink: 0;
+}
+
+/* Abaixo de ~960px (notebook menor/janela mais estreita, tablet), a barra
+   lateral vira uma faixa horizontal no topo em vez de empurrar o conteudo
+   principal pro lado - assim o conteudo sempre tem a largura toda da tela. */
+@media (max-width: 960px) {
+  .layout { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    padding: 12px 16px;
+  }
+  .brand, .brand-sub { margin-bottom: 0; }
+  .brand-sub { display: none; }
+  .nav-link { margin-bottom: 0; padding: 6px 10px; }
+  .operator-box { margin-top: 0; margin-left: auto; }
+  .main { padding: 18px !important; }
 }
 
 .brand {
@@ -66,7 +94,11 @@ a:hover { text-decoration: underline; }
   color: var(--text-muted);
 }
 
-.main { flex: 1; padding: 28px 36px; }
+.main { flex: 1; padding: 28px 36px; min-width: 0; max-width: 100%; }
+
+@media (max-width: 1300px) {
+  .main { padding: 22px 24px; }
+}
 
 .page-header {
   display: flex;
@@ -91,7 +123,7 @@ a:hover { text-decoration: underline; }
 .btn-outline:hover { background: rgba(139, 92, 246, 0.15); color: #fff; }
 .btn-danger { background: #7f1d1d; border-color: #7f1d1d; }
 .btn-danger:hover { background: var(--danger); }
-.btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+.btn-sm { padding: 4px 8px; font-size: 0.75rem; }
 
 /* Grid de acoes por linha de tabela (ex.: lista de Servidores): colunas
    largura fixa, sempre na mesma ordem, entao os botoes alinham verticalmente
@@ -103,14 +135,14 @@ a:hover { text-decoration: underline; }
  */
 .actions {
   display: grid;
-  grid-template-columns: 52px 100px 84px 72px 88px 64px;
-  gap: 6px;
+  grid-template-columns: 44px 84px 72px 62px 76px 56px;
+  gap: 4px;
   align-items: center;
 }
 .actions form { display: contents; }
-.actions .btn, .actions .muted { width: 100%; text-align: center; white-space: nowrap; }
+.actions .btn, .actions .muted { width: 100%; text-align: center; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
 
-.table-scroll { overflow-x: auto; }
+.table-scroll { overflow-x: auto; max-width: 100%; }
 
 .card {
   background: var(--bg-card);
@@ -136,9 +168,18 @@ a:hover { text-decoration: underline; }
 .summary-card .label { color: var(--text-muted); font-size: 0.85rem; }
 
 table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.85rem; white-space: nowrap; }
+th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; }
 tr:hover td { background: rgba(139, 92, 246, 0.06); }
+
+/* Colunas com texto naturalmente longo (mensagens, nomes) precisam poder
+   quebrar linha - senao elas sozinhas forcam a tabela toda a alargar. */
+td.wrap { white-space: normal; }
+
+/* Nome de servidor decomissionado vira "nome [excluído <data>]" (arquivado -
+   ver models.decommission_server) - sozinho, isso alargaria a coluna toda.
+   Trunca com reticencias; o nome completo continua acessivel via title=. */
+.truncate { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 
 .badge {
   display: inline-block;

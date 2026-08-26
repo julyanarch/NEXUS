@@ -25,6 +25,7 @@
 </div>
 
 <div class="card">
+  <div class="table-scroll">
   <table>
     <thead>
       <tr><th>Usuário</th><th>Servidor</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
@@ -33,7 +34,7 @@
       {% for u in users %}
       <tr>
         <td>{{ u.username }}</td>
-        <td>{{ u.server_name }}</td>
+        <td><span class="truncate" title="{{ u.server_name }}">{{ u.server_name }}</span></td>
         <td><span class="badge badge-{{ u.status }}">{{ u.status }}</span></td>
         <td>{{ u.days_locked if u.status == 'locked' else '-' }}</td>
         <td>{{ u.ticket or '-' }}</td>
@@ -45,5 +46,6 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endblock %}
