@@ -603,3 +603,30 @@ lugar nenhum visível na tela - só nos comentários do código, que o operador 
 **Correção:** adicionado um aviso permanente e visível na tela de detalhe do usuário, na seção
 "Comandos executados", explicando essa limitação e a solução (fechar a sessão ou rodar
 `history -a` nela antes de coletar).
+
+---
+
+## 24. Bug: `TypeError: 'builtin_function_or_method' object is not iterable`
+
+Sintoma: depois de uma coleta de histórico **bem-sucedida** pela primeira vez (com comandos de
+verdade coletados), a tela de detalhe do usuário quebrava com esse erro. Só acontecia quando havia
+comandos pra mostrar - por isso nunca tinha aparecido antes (toda coleta anterior tinha sido vazia
+ou sem acesso).
+
+**Causa raiz - uma pegadinha classica do Jinja2:** `ai_engine.build_user_insights()` monta um dict
+`commands = {"status": ..., "items": [...], "collected_at": ...}`, e o template acessava isso como
+`insights.commands.items`. O problema: no Jinja2, `objeto.atributo` tenta primeiro
+`getattr(objeto, "atributo")` e só cai pra `objeto["atributo"]` se isso falhar. Só que `commands` é
+um `dict` **de verdade**, e `dict` já tem um método nativo chamado `items` (`dict.items()`)! Então
+`getattr(commands, "items")` **sempre funciona** e devolve esse método (tipo
+`builtin_function_or_method`) - o Jinja nunca chega a tentar `commands["items"]` (a lista de
+comandos de verdade). Isso não dava erro nenhum enquanto o valor só era testado como verdadeiro/
+falso (`{% if insights.commands.items %}` - um método é sempre "verdadeiro", não tem erro em não
+iterar sobre ele) - só travava na hora de **iterar de verdade** (`{{ insights.commands.items |
+join('\n') }}`), que foi exatamente o primeiro momento em que existiu conteúdo real pra iterar.
+
+**Correção:** a chave do dict foi renomeada de `"items"` para `"lines"` (que não colide com nenhum
+método de `dict`/`str`) em `ai_engine.py` e nos 3 lugares do template que acessavam
+`insights.commands.items`. Mesma pegadinha vale pra qualquer dict passado a um template Jinja com
+chave `items`, `keys`, `values`, `count`, `index`, `update` etc. - vale a pena evitar esses nomes de
+chave, ou usar `dict["chave"]` em vez de `dict.chave` no template quando não dá pra evitar.

@@ -40,12 +40,17 @@ def build_user_insights(managed_user_row):
         days_remaining = max(config.LOCK_MAX_DAYS - days_locked, 0)
         urgency = days_remaining <= (config.LOCK_MAX_DAYS - config.LOCK_WARNING_DAYS)
 
-    commands = {"status": "no_access", "items": [], "collected_at": None}
+    # A chave se chama "lines", nao "items" - "items" colide com o metodo
+    # dict.items() e faz o Jinja2 (que tenta getattr antes de __getitem__)
+    # pegar o metodo em vez do valor, sem erro nenhum ate tentar iterar de
+    # verdade (ex.: `| join`), quando vira "'builtin_function_or_method'
+    # object is not iterable".
+    commands = {"status": "no_access", "lines": [], "collected_at": None}
     if facts_row is not None:
         commands["status"] = facts_row["collection_status"]
         commands["collected_at"] = _format_datetime(facts_row["collected_at"])
         if facts_row["collection_status"] == "ok" and facts_row["history_excerpt"]:
-            commands["items"] = facts_row["history_excerpt"].splitlines()
+            commands["lines"] = facts_row["history_excerpt"].splitlines()
 
     doc_list = [
         {
@@ -129,10 +134,10 @@ def _build_summary(facts):
         parts.append("Nenhum documento vinculado a este usuario ate o momento.")
 
     cmd_status = facts["commands"]["status"]
-    if cmd_status == "ok" and facts["commands"]["items"]:
+    if cmd_status == "ok" and facts["commands"]["lines"]:
         parts.append(
             f"Ultimos comandos conhecidos (best-effort, coletados em {facts['commands']['collected_at']}): "
-            + "; ".join(facts["commands"]["items"][-5:]) + "."
+            + "; ".join(facts["commands"]["lines"][-5:]) + "."
         )
     else:
         parts.append(

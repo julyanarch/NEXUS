@@ -7,7 +7,7 @@
           title="Conecta no servidor agora e le o ~/.bash_history desse usuario (best-effort - pode estar vazio, incompleto ou desativado). Cada clique guarda uma nova coleta, sem apagar as anteriores.">
       <button class="btn btn-outline" type="submit">Coletar histórico de comandos</button>
     </form>
-    {% if insights.commands.status == 'ok' and insights.commands.items %}
+    {% if insights.commands.status == 'ok' and insights.commands.lines %}
     <a class="btn btn-outline" href="{{ url_for('download_history', user_id=user.id) }}"
        title="Baixa a coleta mais recente (mostrada abaixo) como arquivo .txt.">Baixar .txt</a>
     {% endif %}
@@ -62,9 +62,9 @@
 
 <div class="card">
   <h3 style="margin-top:0;">Comandos executados (best-effort)</h3>
-  {% if insights.commands.status == 'ok' and insights.commands.items %}
+  {% if insights.commands.status == 'ok' and insights.commands.lines %}
     <p class="muted">Coletado em {{ insights.commands.collected_at }}. Histórico não é garantia total (pode estar incompleto).</p>
-    <pre>{{ insights.commands.items | join('\n') }}</pre>
+    <pre>{{ insights.commands.lines | join('\n') }}</pre>
   {% else %}
     <p class="muted">
       {% if insights.commands.status == 'empty' %}Histórico vazio ou desativado no servidor.
