@@ -418,3 +418,10 @@ locked`.
 
 **Se a trava já tiver acontecido:** reiniciar o processo do Flask (`Ctrl+C` e `python app.py` de
 novo) libera na hora - a trava é presa à conexão/processo, não ao arquivo em si.
+
+**Pegadinha:** o arquivamento de nome (seção 13) só vale pra exclusões feitas **depois** dessa
+correção estar rodando. Um servidor já decomissionado antes disso continua com o nome original
+gravado, e recadastrar com o mesmo nome falha do mesmo jeito. `_archive_decommissioned_names()`
+resolve isso retroativamente, uma vez, toda vez que a app sobe (`models.init_db()` →
+`_migrate_schema()`): varre os servidores já decomissionados e arquiva o nome de quem ainda não
+tinha sido arquivado.

@@ -45,7 +45,27 @@ def _migrate_schema():
         conn.execute("ALTER TABLE servers ADD COLUMN decommissioned_by TEXT")
         conn.execute("ALTER TABLE servers ADD COLUMN decommission_reason TEXT")
         conn.commit()
+    _archive_decommissioned_names(conn)
     conn.close()
+
+
+def _archive_decommissioned_names(conn):
+    """Servidor decomissionado antes do arquivamento de nome existir (ver
+    decommission_server) ainda ocupa o nome original na coluna UNIQUE,
+    impedindo recadastrar um servidor com o mesmo nome. Arruma isso uma
+    unica vez, retroativamente, toda vez que a app sobe."""
+    rows = conn.execute(
+        "SELECT id, name, decommissioned_at FROM servers WHERE decommissioned_at IS NOT NULL"
+    ).fetchall()
+    changed = False
+    for row in rows:
+        if "[excluído " in row["name"]:
+            continue
+        archived_name = f"{row['name']} [excluído {row['decommissioned_at']}]"
+        conn.execute("UPDATE servers SET name=? WHERE id=?", (archived_name, row["id"]))
+        changed = True
+    if changed:
+        conn.commit()
 
 
 def _seed_servers_from_legacy_conf():
