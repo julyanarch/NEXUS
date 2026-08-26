@@ -42,7 +42,10 @@
     <p class="muted" style="margin-top:14px; font-size:0.8rem;">
       Depois de salvar, o NEXUS testa sozinho (com <code>sudo -n</code>, sem risco de travar
       esperando senha) se esse servidor precisa de senha de sudo ou não, e já libera pra ações
-      automaticamente quando não precisar.
+      automaticamente quando não precisar. Se der pra liberar ações nessa hora (NOPASSWD
+      detectado), o NEXUS já importa sozinho os usuários que existem nesse servidor
+      (uid ≥ {{ discover_min_uid }}) — senão, use o botão "Importar usuários existentes" depois
+      de configurar a senha de sudo.
     </p>
     {% endif %}
   </form>
@@ -54,7 +57,10 @@
   <p class="muted">
     Traz pro NEXUS os usuários que já existem em "{{ server.name }}" (uid ≥ {{ discover_min_uid }},
     contas de gente) e nunca passaram por aqui - não cria, altera nem remove nada no servidor, só
-    lê. Usuário já conhecido pelo NEXUS não é duplicado.
+    lê. Usuário já conhecido pelo NEXUS não é duplicado. Isso já roda sozinho ao cadastrar um
+    servidor novo (se a senha de sudo já estiver liberada nessa hora) - use esse botão pra
+    servidores cadastrados antes, ou pra trazer usuários criados diretamente no servidor depois
+    da última importação.
   </p>
   <form method="post" action="{{ url_for('discover_server_users', server_id=server.id) }}">
     <button class="btn btn-outline" type="submit">Importar usuários existentes</button>

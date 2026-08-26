@@ -268,6 +268,34 @@ def register_routes(app):
                 "warning",
             )
 
+    def _discover_and_import_users(server_id, server_name, operator):
+        """Roda a descoberta de usuarios ja existentes no servidor (uid >=
+        DISCOVER_MIN_UID, so leitura) e grava o resultado como flash -
+        reaproveitado tanto pelo botao manual ("Importar usuarios
+        existentes") quanto automaticamente ao cadastrar um servidor novo."""
+        result = ansible_bridge.discover_existing_users(server_name)
+        if result["status"] != "ok":
+            flash(
+                f'Não foi possível importar usuários de "{server_name}": '
+                f'{result.get("detail", "erro desconhecido")}. Use "Importar usuários existentes" '
+                "na tela do servidor pra tentar de novo.",
+                "warning",
+            )
+            return
+
+        found = result["users"]
+        inserted = models.import_discovered_users(server_id, found, operator)
+        locked_count = sum(1 for u in found if u["locked"])
+        skipped = len(found) - inserted
+        flash(
+            f'"{server_name}": {len(found)} usuário(s) encontrado(s) no servidor '
+            f'({locked_count} bloqueado(s)) - {inserted} novo(s) importado(s) pro NEXUS'
+            + (f", {skipped} já eram conhecidos." if skipped else ".")
+            + (' Bloqueados importados precisam de revisão manual em "Usuários" antes de contarem '
+               "pra remoção automática de 90 dias." if any(u["locked"] for u in found) and inserted else ""),
+            "success",
+        )
+
     @app.route("/servers/new", methods=["GET", "POST"])
     @require_operator
     def new_server():
@@ -285,6 +313,17 @@ def register_routes(app):
             flash("Servidor cadastrado.", "success")
             _warn_duplicate_host(ssh_host)
             _detect_and_apply_sudo_nopasswd(server_id, name)
+
+            server = models.get_server(server_id)
+            if server_ready_for_actions(server):
+                _discover_and_import_users(server_id, name, session["operator_name"])
+            else:
+                flash(
+                    f'Assim que configurar a senha de sudo de "{name}", clique em "Importar '
+                    'usuários existentes" na tela do servidor pra trazer os usuários que já '
+                    "existem nele pro NEXUS.",
+                    "warning",
+                )
             return redirect(url_for("list_servers"))
         return render_template("servers/form.html", server=None)
 
@@ -323,24 +362,7 @@ def register_routes(app):
         if not server_ready_for_actions(server):
             flash(f'Configure a senha de sudo de "{server["name"]}" antes de importar usuários.', "warning")
             return redirect(url_for("edit_server", server_id=server_id))
-
-        result = ansible_bridge.discover_existing_users(server["name"])
-        if result["status"] != "ok":
-            flash(f'Falha ao consultar "{server["name"]}": {result.get("detail", "erro desconhecido")}.', "danger")
-            return redirect(url_for("edit_server", server_id=server_id))
-
-        found = result["users"]
-        inserted = models.import_discovered_users(server_id, found, session["operator_name"])
-        locked_count = sum(1 for u in found if u["locked"])
-        skipped = len(found) - inserted
-        flash(
-            f'"{server["name"]}": {len(found)} usuário(s) encontrado(s) no servidor '
-            f'({locked_count} bloqueado(s)) - {inserted} novo(s) importado(s) pro NEXUS'
-            + (f", {skipped} já eram conhecidos." if skipped else ".")
-            + (' Bloqueados importados precisam de revisão manual em "Usuários" antes de contarem '
-               "pra remoção automática de 90 dias." if any(u["locked"] for u in found) and inserted else ""),
-            "success",
-        )
+        _discover_and_import_users(server_id, server["name"], session["operator_name"])
         return redirect(url_for("edit_server", server_id=server_id))
 
     @app.route("/servers/<int:server_id>/delete", methods=["POST"])

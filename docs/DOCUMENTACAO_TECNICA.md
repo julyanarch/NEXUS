@@ -903,3 +903,29 @@ limite), cada um com uma barra de progresso ate os 90 dias (reaproveita a classe
 usada na pagina de detalhe do usuario) - mais urgente primeiro. Usuario com `lock_review_needed`
 (importado com data de bloqueio desconhecida, secao 35) aparece com a tag "revisao pendente" no
 lugar da barra, ja que nao ha dias pra mostrar, e fica sempre no fim da lista.
+
+
+---
+
+## 37. Importacao de usuarios existentes passa a rodar automaticamente ao cadastrar servidor
+
+A seção 35 exigia clicar manualmente em "Importar usuários existentes" por servidor - a pedido
+explícito, isso passou a rodar **sozinho** no cadastro de um servidor novo, logo depois da
+detecção automática de NOPASSWD. A lógica foi extraída pra `app._discover_and_import_users()`
+(reaproveitada pelo botão manual e pelo cadastro automático, mesmo comportamento nos dois casos).
+
+**Só roda automaticamente se já der pra executar ações nesse instante** (`server_ready_for_actions()`
+- NOPASSWD detectado, ou senha de sudo já configurada): descobrir usuários exige `become` (root)
+no servidor, então se a senha de sudo ainda não está disponível na hora do cadastro, a importação
+automática é pulada (com um aviso explicando isso) e fica pendente pro botão manual, depois que a
+senha for configurada.
+
+**Não é retroativo:** só vale pra servidores cadastrados a partir de agora. Servidores já
+cadastrados antes dessa mudança (o caso real do dono do projeto: 5 servidores já existentes)
+continuam precisando do botão manual "Importar usuários existentes" (tela de editar servidor,
+seção 35) pra trazer os usuários - rodar o cadastro de novo não é necessário nem recomendado.
+
+**Sobre "tempo real":** o pedido mencionava visualizar os usuários "em tempo real". O que existe é
+uma importação sob demanda (automática no cadastro, manual depois) - não é uma sincronização
+contínua/ao vivo (ex.: via WebSocket) refletindo mudanças feitas diretamente no servidor segundo a
+segundo. Pra pegar usuários criados depois da última importação, rode o botão manual de novo.
