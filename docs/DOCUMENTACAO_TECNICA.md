@@ -520,3 +520,32 @@ cada clique em "Coletar histórico") - cada coleta vira uma linha nova no banco 
 anterior), então já existe um histórico de coletas ao longo do tempo, só não tem tela pra navegar
 por ele (hoje só a mais recente é mostrada). Ainda não implementado - depende de decidir se vale a
 pena pra esse projeto.
+
+---
+
+## 21. Bug: usuário removido/purgado não aparecia no filtro "Removidos"
+
+Sintoma: aplicar "purgar" (ou "remover"/"bloquear") num usuário funcionava de verdade no servidor
+(Execuções mostrava `ok`), mas o usuário não aparecia na tela Usuários ao filtrar por "Removidos" -
+simplesmente sumia, sem erro nenhum.
+
+**Causa raiz:** `models.upsert_user_after_action()` só sabia **atualizar** uma linha existente em
+`managed_users` pras ações "lock"/"remove"/"delete"/"purge" - o `UPDATE ... WHERE username=? AND
+server_id=?` não afeta nenhuma linha (nem dá erro) quando essa combinação usuário+servidor nunca
+tinha sido registrada antes pelo NEXUS. Isso acontece sempre que a **primeira ação** que o NEXUS
+registra pra um usuário não é "criar" - ex.: um usuário que já existia no servidor antes de passar
+a ser gerido por aqui, e a primeira coisa que se faz com ele no NEXUS é bloquear ou remover
+direto. A ação real (via Ansible) acontecia normalmente e ficava certinho em `action_log`
+(por isso Execuções sempre mostrou tudo certo) - só a tabela local `managed_users`, que é a fonte
+da tela Usuários, ficava sem registro nenhum desse usuário.
+
+**Correção:** as três ações (`create`/`add`, `lock`, `remove`/`delete`/`purge`) agora seguem o
+mesmo padrão - se já existe uma linha, atualiza; se não existe, insere uma nova, já com o status
+final correto. Pra "lock"/"remove" sem linha prévia, `created_by` (coluna `NOT NULL`) recebe o
+texto `models.NOT_CREATED_VIA_NEXUS` ("desconhecido (usuário já existia no servidor)") em vez de
+inventar uma data/autor de criação que nunca existiu.
+
+**Sobre o registro já perdido** (ex.: o `teste.teste` em `andressa` purgado antes dessa correção):
+não há backfill automático - a linha de auditoria em Execuções continua correta e intacta, só a
+listagem de Usuários não vai mostrar esse usuário retroativamente. Não é grave pra dado de teste;
+se precisar reconstituir um caso real depois, dá pra fazer manualmente a partir do `action_log`.

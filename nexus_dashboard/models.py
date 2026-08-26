@@ -9,6 +9,13 @@ def now_iso():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+# managed_users.created_by e NOT NULL - usado quando a primeira acao que o
+# NEXUS registra pra um usuario e "lock"/"remove"/"purge" (nao "create"), ou
+# seja, o usuario ja existia no servidor antes de ser gerido por aqui. Ver
+# upsert_user_after_action().
+NOT_CREATED_VIA_NEXUS = "desconhecido (usuário já existia no servidor)"
+
+
 def get_db():
     # timeout/busy_timeout: o agendador (thread separada, ver scheduler.py)
     # e as requisicoes web podem gravar quase ao mesmo tempo - sem isso, o
@@ -334,16 +341,42 @@ def upsert_user_after_action(username, server_id, action, groups_csv, shell, hom
                      ts, performed_by, ts),
                 )
         elif action == "lock":
-            conn.execute(
-                "UPDATE managed_users SET status='locked', locked_at=?, ticket=?, reason=?, updated_at=? WHERE username=? AND server_id=?",
-                (ts, ticket, reason, ts, username, server_id),
-            )
+            if existing:
+                conn.execute(
+                    "UPDATE managed_users SET status='locked', locked_at=?, ticket=?, reason=?, updated_at=? WHERE id=?",
+                    (ts, ticket, reason, ts, existing["id"]),
+                )
+            else:
+                # Usuario que o NEXUS nunca tinha "criado" (ja existia no
+                # servidor antes de ser gerido por aqui) - sem isso a acao
+                # aplicava certinho no servidor mas nao deixava rastro na
+                # tabela local, entao nunca aparecia em Usuarios.
+                conn.execute(
+                    """INSERT INTO managed_users
+                       (username, server_id, status, groups_csv, shell, home_policy, ticket, reason,
+                        created_at, created_by, locked_at, updated_at)
+                       VALUES (?, ?, 'locked', ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (username, server_id, groups_csv, shell, home_policy, ticket, reason,
+                     ts, NOT_CREATED_VIA_NEXUS, ts, ts),
+                )
         elif action in ("remove", "delete", "purge"):
-            conn.execute(
-                """UPDATE managed_users SET status='removed', removed_at=?, removed_by=?, removal_type='manual',
-                   updated_at=? WHERE username=? AND server_id=?""",
-                (ts, performed_by, ts, username, server_id),
-            )
+            if existing:
+                conn.execute(
+                    """UPDATE managed_users SET status='removed', removed_at=?, removed_by=?, removal_type='manual',
+                       updated_at=? WHERE id=?""",
+                    (ts, performed_by, ts, existing["id"]),
+                )
+            else:
+                # Mesmo caso do "lock" acima - ex.: purgar de primeira um
+                # usuario que ja existia no servidor, nunca gerido por aqui.
+                conn.execute(
+                    """INSERT INTO managed_users
+                       (username, server_id, status, groups_csv, shell, home_policy, ticket, reason,
+                        created_at, created_by, removed_at, removed_by, removal_type, updated_at)
+                       VALUES (?, ?, 'removed', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?)""",
+                    (username, server_id, groups_csv, shell, home_policy, ticket, reason,
+                     ts, NOT_CREATED_VIA_NEXUS, ts, performed_by, ts),
+                )
         conn.commit()
     finally:
         conn.close()
