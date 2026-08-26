@@ -25,12 +25,10 @@
         {% else %}
           <a href="{{ url_for('set_operator') }}">Identificar operador</a>
         {% endif %}
+        {% if servers_missing_vault %}
         <br>
-        {% if not servers_missing_vault %}
-          <span style="color: var(--ok);">Senha de sudo ok em todos os servidores</span>
-        {% else %}
-          <span style="color: var(--danger);">{{ servers_missing_vault|length }} servidor(es) sem senha de sudo</span>
-          <br><a href="{{ url_for('list_servers') }}">configurar</a>
+        <span style="color: var(--danger);">{{ servers_missing_vault|length }} servidor(es) sem senha de sudo</span>
+        <br><a href="{{ url_for('list_servers') }}">configurar</a>
         {% endif %}
       </div>
     </aside>

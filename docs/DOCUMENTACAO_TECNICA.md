@@ -476,3 +476,18 @@ minutos) sem trocar. Passado esse tempo, a próxima tentativa de ação (não na
 mensagem explicando o motivo (não é erro, é o comportamento esperado). `session["operator_set_at"]`
 grava o instante (`time.time()`) da última identificação; `require_operator` compara com o horário
 atual a cada acesso a uma rota que grava algo.
+
+---
+
+## 18. Pequenos ajustes de clareza (lista de Servidores e caixa do operador)
+
+- **Legendas acima dos botões de ação:** o grid de botões (seção 14) tinha só um cabeçalho
+  genérico "Ações" - não ficava óbvio o que cada botão fazia, principalmente "detectar" (detecta de
+  novo se o servidor pede senha de sudo). Agora cada botão tem uma legenda curta acima, alinhada
+  com ele (usa o mesmo `grid-template-columns` do `.actions`), e o conjunto tem um tooltip com a
+  explicação completa de cada um.
+- **Caixa do operador (barra lateral):** a mensagem "Senha de sudo ok em todos os servidores" foi
+  removida - o texto dava a entender que todo servidor tinha senha configurada, mas isso não é bem
+  verdade quando alguns são NOPASSWD (nunca têm senha, por design) e outros têm senha configurada
+  de fato. A caixa agora só mostra algo quando **falta** configurar (`N servidor(es) sem senha de
+  sudo`); quando está tudo pronto, fica em silêncio em vez de uma frase imprecisa.

@@ -9,7 +9,15 @@
   <div class="table-scroll">
   <table>
     <thead>
-      <tr><th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th><th>Ações</th></tr>
+      <tr>
+        <th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th>
+        <th>
+          Ações
+          <div class="actions actions-caption" title="editar dados do servidor | testar se a conexão SSH funciona | configurar a senha de sudo desse servidor | testar de novo se esse servidor pede senha de sudo (sudo -n) | habilitar/desabilitar o servidor | excluir">
+            <span>editar</span><span>conexão</span><span>sudo</span><span>detectar sudo</span><span>ativação</span><span>excluir</span>
+          </div>
+        </th>
+      </tr>
     </thead>
     <tbody>
       {% for s in servers %}
