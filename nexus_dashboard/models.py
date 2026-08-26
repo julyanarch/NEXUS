@@ -514,31 +514,6 @@ def executions_per_server(days=30):
     return rows
 
 
-# ---------------------------------------------------------------- documents --
-
-def add_document(managed_user_id, doc_type, reference, description, uploaded_by):
-    conn = get_db()
-    try:
-        conn.execute(
-            """INSERT INTO documents (managed_user_id, doc_type, reference, description, uploaded_by, uploaded_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (managed_user_id, doc_type, reference, description, uploaded_by, now_iso()),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-
-
-def list_documents_for_user(managed_user_id):
-    conn = get_db()
-    rows = conn.execute(
-        "SELECT * FROM documents WHERE managed_user_id = ? ORDER BY uploaded_at DESC",
-        (managed_user_id,),
-    ).fetchall()
-    conn.close()
-    return rows
-
-
 # --------------------------------------------------------- collected_facts --
 
 def save_collected_facts(managed_user_id, server_id, collection_status, history_excerpt):

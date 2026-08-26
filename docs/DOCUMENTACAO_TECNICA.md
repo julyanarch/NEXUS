@@ -667,6 +667,30 @@ separado de "Documentos vinculados":
   tentativa de escapar da home via `../` (ex.: `../../etc/passwd`) - já que essa checagem roda com
   `become` (root) no servidor remoto, sem essa validação daria pra sondar a existência de qualquer
   arquivo do sistema, não só da home do usuário.
-- **Resultado:** mostrado via flash message (achou/não achou/erro), sem guardar nada no banco -
-  se o operador quiser deixar um registro permanente do achado, usa "Documentos vinculados"
-  manualmente depois, como já fazia.
+- **Resultado:** mostrado via flash message (achou/não achou/erro), sem guardar nada no banco.
+
+*(Atualização: "Documentos vinculados", citado acima, foi removido pouco depois - ver seção 27.)*
+
+---
+
+## 27. "Documentos vinculados" removido - substituído por "Verificar arquivo"
+
+Primeiro teste real da seção 26 deu "não encontrado" pra um arquivo que existia de verdade na
+home. Duas coisas saíram desse teste:
+
+**1. A mensagem não dizia em qual servidor procurou.** `julyana.silva` tinha cadastro em **4
+servidores diferentes** (thierry, julia, douglas, andressa) - bem fácil abrir a página errada sem
+perceber. As flash messages de "Verificar arquivo" agora sempre incluem o nome do servidor
+(`... na home de {usuario} em {servidor}`), pra esse tipo de engano ficar óbvio na hora.
+
+**2. "Documentos vinculados" foi removido.** A pedido explícito: como ele nunca verificou nada de
+verdade (era só uma anotação manual, seção 26), e agora existe "Verificar arquivo na home" fazendo
+a checagem real, o card antigo só confundia (deixava parecer que "vincular um documento" registrava
+algo verificado). Removido: o card e o formulário do template, a rota `/users/<id>/documents`, e
+as funções `models.add_document()`/`models.list_documents_for_user()` (e o que dependia delas em
+`ai_engine.py` - o resumo da IA não menciona mais documentos). A tabela `documents` continua no
+schema (não foi feita migração pra apagá-la) - só não é mais escrita nem lida por nada; dado
+antigo (ex.: a linha "teste" criada durante os testes) fica órfão no banco, sem efeito.
+
+Também: as descrições dos cards da tela de usuário foram enxugadas (frases curtas, sem repetir
+tudo em detalhe) - a pedido explícito de manter a interface mais direta.

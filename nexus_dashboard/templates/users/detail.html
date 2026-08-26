@@ -83,62 +83,13 @@
 
 <div class="card">
   <h3 style="margin-top:0;">Verificar arquivo na home do usuário</h3>
-  <p class="muted">
-    Confere de verdade no servidor, agora, se um arquivo ou pasta existe na home de
-    {{ user.username }} — diferente de "Documentos vinculados" abaixo, que é só uma anotação
-    manual, sem checar nada. Digite o caminho relativo à home (ex.: <code>relatorio.pdf</code> ou
-    <code>docs/contrato.pdf</code>).
-  </p>
+  <p class="muted">Confere no servidor se um arquivo ou pasta existe na home de {{ user.username }}.</p>
   <form method="post" action="{{ url_for('check_home_file', user_id=user.id) }}" class="form-grid" style="align-items:end;">
     <div class="form-group">
       <label>Caminho (relativo à home)</label>
       <input type="text" name="file_path" placeholder="ex.: relatorio.pdf" required>
     </div>
     <div class="form-group"><button class="btn btn-outline" type="submit">Verificar</button></div>
-  </form>
-</div>
-
-<div class="card">
-  <h3 style="margin-top:0;">Documentos vinculados</h3>
-  {% if documents %}
-  <div class="table-scroll">
-  <table>
-    <thead><tr><th>Tipo</th><th>Referência</th><th>Descrição</th><th>Enviado por</th><th>Quando</th></tr></thead>
-    <tbody>
-      {% for d in documents %}
-      <tr>
-        <td>{{ d.doc_type }}</td>
-        <td>{{ d.reference }}</td>
-        <td class="wrap">{{ d.description or '-' }}</td>
-        <td>{{ d.uploaded_by }}</td>
-        <td>{{ d.uploaded_at }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  </div>
-  {% else %}
-  <p class="muted">Nenhum documento vinculado ainda.</p>
-  {% endif %}
-
-  <form method="post" action="{{ url_for('add_document', user_id=user.id) }}" class="form-grid" style="margin-top:14px;">
-    <div class="form-group">
-      <label>Tipo</label>
-      <select name="doc_type">
-        <option value="ticket_ref">Referência de chamado</option>
-        <option value="uploaded_file">Arquivo (caminho/nome)</option>
-        <option value="note">Nota</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Referência</label>
-      <input type="text" name="reference" required placeholder="ex.: CHG1002 ou nome do arquivo">
-    </div>
-    <div class="form-group">
-      <label>Descrição</label>
-      <input type="text" name="description">
-    </div>
-    <div class="form-group" style="align-self:end;"><button class="btn" type="submit">Vincular</button></div>
   </form>
 </div>
 

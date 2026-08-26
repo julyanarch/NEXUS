@@ -505,23 +505,9 @@ def register_routes(app):
             return redirect(url_for("list_users"))
         insights = ai_engine.build_user_insights(user)
         timeline = models.list_action_log_for_user(user_id)
-        documents = models.list_documents_for_user(user_id)
         return render_template(
-            "users/detail.html", user=user, insights=insights, timeline=timeline, documents=documents,
+            "users/detail.html", user=user, insights=insights, timeline=timeline,
         )
-
-    @app.route("/users/<int:user_id>/documents", methods=["POST"])
-    @require_operator
-    def add_document(user_id):
-        models.add_document(
-            user_id,
-            request.form.get("doc_type", "note"),
-            request.form.get("reference", "").strip(),
-            request.form.get("description", "").strip(),
-            session["operator_name"],
-        )
-        flash("Documento vinculado.", "success")
-        return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/check-file", methods=["POST"])
     @require_operator
@@ -545,11 +531,20 @@ def register_routes(app):
             if result.get("mtime_text"):
                 details.append(f'modificado em {result["mtime_text"]}')
             suffix = f" ({', '.join(details)})" if details else ""
-            flash(f'Encontrado: "{safe_path}" existe na home de {user["username"]} ({kind}){suffix}.', "success")
+            flash(
+                f'Encontrado: "{safe_path}" existe na home de {user["username"]} em {user["server_name"]} ({kind}){suffix}.',
+                "success",
+            )
         elif result["status"] == "not_found":
-            flash(f'Não encontrado: "{safe_path}" não existe na home de {user["username"]}.', "warning")
+            flash(
+                f'Não encontrado: "{safe_path}" não existe na home de {user["username"]} em {user["server_name"]}.',
+                "warning",
+            )
         else:
-            flash(f'Falha ao verificar "{safe_path}": {result.get("detail", "erro desconhecido")}.', "danger")
+            flash(
+                f'Falha ao verificar "{safe_path}" em {user["server_name"]}: {result.get("detail", "erro desconhecido")}.',
+                "danger",
+            )
         return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/history", methods=["POST"])

@@ -103,8 +103,8 @@ configure port forwarding 5000→5000 nas configurações de rede do VirtualBox.
 4. **Usuários** — lista todos os usuários geridos pelo dashboard; cada um tem uma página de
    detalhe com o resumo da **IA NEXUS** (local, baseada em regras, sem envio de dados a serviços
    externos): status, dias bloqueado/restantes até a remoção automática, grupos, criação
-   (quando/quem), documentos vinculados e comandos executados (best-effort, via
-   `~/.bash_history`).
+   (quando/quem), verificação de arquivo específico na home e comandos executados (best-effort,
+   via `~/.bash_history`).
 5. **Painel** — depois de algumas ações, mostra 3 gráficos: distribuição de usuários por status
    (barra empilhada), execuções por dia nos últimos 14 dias (sucesso/falha) e execuções por
    servidor nos últimos 30 dias. Passe o mouse sobre qualquer barra/segmento para ver o valor
@@ -128,7 +128,6 @@ do usuário.
 | Servidores geridos | tabela `servers` (substitui `servidores.conf`) |
 | Usuários geridos e status | tabela `managed_users` |
 | Auditoria/timeline de toda ação | tabela `action_log` |
-| Documentos/chamados vinculados | tabela `documents` |
 | Histórico de comandos coletado | tabela `collected_facts` |
 | Playbooks Ansible | `ansible/playbooks/` |
 | Senha de sudo de cada servidor (criptografada) | `ansible/host_vars/<nome-do-servidor>/vault.yml` + `ansible/.vault_pass` |

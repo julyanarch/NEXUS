@@ -1,10 +1,10 @@
 """IA NEXUS - motor de regras local.
 
 Nao chama nenhuma API externa: le apenas os dados ja coletados no SQLite
-(cadastro do usuario, historico de acoes, documentos vinculados e o ultimo
-resultado de coleta de bash_history) e monta fatos estruturados + um
-paragrafo em portugues. Toda a logica e determinística (if/elif sobre os
-dados), o que a torna auditavel e facil de explicar.
+(cadastro do usuario, historico de acoes e o ultimo resultado de coleta de
+bash_history) e monta fatos estruturados + um paragrafo em portugues. Toda a
+logica e determinística (if/elif sobre os dados), o que a torna auditavel e
+facil de explicar.
 """
 
 import config
@@ -27,7 +27,6 @@ def _format_datetime(value):
 def build_user_insights(managed_user_row):
     user = managed_user_row
     action_log = models.list_action_log_for_user(user["id"])
-    documents = models.list_documents_for_user(user["id"])
     facts_row = models.latest_collected_facts(user["id"])
 
     groups = [g for g in (user["groups_csv"] or "").split(";") if g]
@@ -52,17 +51,6 @@ def build_user_insights(managed_user_row):
         if facts_row["collection_status"] == "ok" and facts_row["history_excerpt"]:
             commands["lines"] = facts_row["history_excerpt"].splitlines()
 
-    doc_list = [
-        {
-            "type": d["doc_type"],
-            "reference": d["reference"],
-            "description": d["description"],
-            "uploaded_by": d["uploaded_by"],
-            "uploaded_at": _format_datetime(d["uploaded_at"]),
-        }
-        for d in documents
-    ]
-
     facts = {
         "username": user["username"],
         "server_name": user["server_name"],
@@ -82,7 +70,6 @@ def build_user_insights(managed_user_row):
         "removed_at": _format_datetime(user["removed_at"]),
         "removed_by": user["removed_by"],
         "removal_type": user["removal_type"],
-        "documents": doc_list,
         "commands": commands,
         "total_actions_registradas": len(action_log),
     }
@@ -127,11 +114,6 @@ def _build_summary(facts):
         parts.append(f"Permissoes/grupos: {', '.join(facts['groups'])}.")
     else:
         parts.append("Nenhum grupo adicional registrado (sem privilegios elevados conhecidos).")
-
-    if facts["documents"]:
-        parts.append(f"Ha {len(facts['documents'])} documento(s)/chamado(s) vinculado(s) a este usuario.")
-    else:
-        parts.append("Nenhum documento vinculado a este usuario ate o momento.")
 
     cmd_status = facts["commands"]["status"]
     if cmd_status == "ok" and facts["commands"]["lines"]:
