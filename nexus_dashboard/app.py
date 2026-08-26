@@ -531,11 +531,11 @@ def register_routes(app):
             if result.get("mtime_text"):
                 details.append(f'modificado em {result["mtime_text"]}')
             suffix = f" ({', '.join(details)})" if details else ""
-            flash(f'Encontrado em {user["server_name"]}: "{full_path}" ({kind}){suffix}.', "success")
+            flash(f'Encontrado em {user["server_name"]}: "{full_path}" ({kind}){suffix}.', "checkfile-success")
         elif result["status"] == "not_found":
-            flash(f'Não encontrado em {user["server_name"]}: "{full_path}".', "warning")
+            flash(f'Não encontrado em {user["server_name"]}: "{full_path}".', "checkfile-warning")
         else:
-            flash(f'Falha ao verificar "{full_path}" em {user["server_name"]}: {result.get("detail", "erro desconhecido")}.', "danger")
+            flash(f'Falha ao verificar "{full_path}" em {user["server_name"]}: {result.get("detail", "erro desconhecido")}.', "checkfile-danger")
         return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/history", methods=["POST"])

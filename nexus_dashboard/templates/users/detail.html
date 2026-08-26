@@ -91,6 +91,11 @@
     </div>
     <div class="form-group"><button class="btn btn-outline" type="submit">Verificar</button></div>
   </form>
+  {% with checkfile_messages = get_flashed_messages(with_categories=true, category_filter=['checkfile-success', 'checkfile-warning', 'checkfile-danger']) %}
+    {% for category, message in checkfile_messages %}
+    <div class="flash flash-{{ category.split('-')[-1] }}" style="margin-top:12px;">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
 </div>
 
 <div class="card">

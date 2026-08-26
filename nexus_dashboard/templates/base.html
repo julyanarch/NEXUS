@@ -37,7 +37,9 @@
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
+            {% if not category.startswith('checkfile-') %}
             <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endif %}
           {% endfor %}
         {% endif %}
       {% endwith %}

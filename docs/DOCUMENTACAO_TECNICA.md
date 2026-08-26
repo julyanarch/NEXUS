@@ -746,3 +746,23 @@ comandos executados", tinham ficado ainda mais deslocados ali dentro de um pará
 (com contagem regressiva) + aviso de urgência quando aplicável, ou removido (por quem/quando/tipo).
 Todo o resto do que já está no "Fatos" (servidor, criação, permissões) e no "Últimos comandos
 executados" (comandos) não é mais repetido no resumo da IA.
+
+---
+
+## 30. Mensagem de "Verificar arquivo" aparecia no topo da página, longe do formulário
+
+As mensagens de flash (`flash()` do Flask) sempre aparecem no topo do `<main>`, em `base.html` -
+comportamento padrão do app, usado em toda ação (criar servidor, aplicar ação, etc.). Pra "Verificar
+arquivo" isso ficava ruim: a resposta (achou/não achou, com tamanho e data) saía longe do
+formulário que a gerou, obrigando rolar a tela pra ligar pergunta e resposta.
+
+**Correção:** as flash messages dessa ação específica usam categorias com prefixo `checkfile-`
+(`checkfile-success`/`checkfile-warning`/`checkfile-danger`) em vez de `success`/`warning`/`danger`.
+`base.html` (o loop global) agora **pula** qualquer categoria que comece com `checkfile-`; o card
+"Verificar arquivo" em `users/detail.html` tem seu próprio bloco `get_flashed_messages(...,
+category_filter=[...])` logo depois do formulário, que so pega essas categorias - a mensagem
+aparece ali, colada no formulário, sem duplicar no topo. (Funciona porque o Flask cacheia a lista
+completa de flashes na primeira chamada de `get_flashed_messages()` na request - a segunda chamada,
+com filtro, reaproveita esse cache em vez de reconsultar a sessão, que já teria sido esvaziada.)
+Esse padrão (categoria com prefixo + filtro local) pode ser reaproveitado pra qualquer outra ação
+que precise de feedback perto do formulário, em vez de no topo da página.
