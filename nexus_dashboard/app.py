@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import time
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
 from passlib.hash import sha512_crypt
 
 import ai_engine
@@ -521,6 +521,29 @@ def register_routes(app):
         models.save_collected_facts(user_id, user["server_id"], result["status"], result.get("excerpt", ""))
         flash("Coleta de historico concluida.", "success")
         return redirect(url_for("user_detail", user_id=user_id))
+
+    @app.route("/users/<int:user_id>/history/download")
+    def download_history(user_id):
+        user = models.get_user(user_id)
+        if user is None:
+            flash("Usuario nao encontrado.", "danger")
+            return redirect(url_for("list_users"))
+        facts = models.latest_collected_facts(user_id)
+        if not facts or facts["collection_status"] != "ok" or not facts["history_excerpt"]:
+            flash("Nenhum historico coletado ainda para esse usuario - clique em \"Coletar historico de comandos\" primeiro.", "warning")
+            return redirect(url_for("user_detail", user_id=user_id))
+
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", f'{user["username"]}_{user["server_name"]}')
+        header = (
+            f'# Historico de comandos (best-effort) de "{user["username"]}" em "{user["server_name"]}"\n'
+            f'# Coletado em: {facts["collected_at"]}\n'
+            "# Linhas marcadas como redigidas foram ocultadas por conterem provavel credencial.\n\n"
+        )
+        return Response(
+            header + facts["history_excerpt"],
+            mimetype="text/plain",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}_historico.txt"'},
+        )
 
     @app.route("/users/<int:user_id>/force-removal", methods=["POST"])
     @require_operator

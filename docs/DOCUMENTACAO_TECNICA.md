@@ -491,3 +491,32 @@ atual a cada acesso a uma rota que grava algo.
   verdade quando alguns são NOPASSWD (nunca têm senha, por design) e outros têm senha configurada
   de fato. A caixa agora só mostra algo quando **falta** configurar (`N servidor(es) sem senha de
   sudo`); quando está tudo pronto, fica em silêncio em vez de uma frase imprecisa.
+
+---
+
+## 19. "Dias bloqueado" mostrando 0 no primeiro dia — não é bug
+
+Dúvida recorrente: um usuário bloqueado há ~20h aparece com "Dias bloqueado: 0". Isso é esperado:
+`days_locked` é `CAST((julianday('now') - julianday(locked_at)) AS INTEGER)` — conta **dias
+completos** decorridos (trunca a fração, não arredonda), calculado **ao vivo** a cada carregamento
+da página (não depende de nenhum job rodando) contra o horário atual. Só vira `1` depois de 24h
+completas desde o bloqueio. Esse é o mesmo critério usado pro limite de 90 dias (remoção
+automática) e aviso de 80 dias - contar dia parcial como dia inteiro inflaria a contagem.
+
+## 20. Download do histórico de comandos coletado (.txt)
+
+A tela de detalhe do usuário já mostrava o histórico coletado (`collected_facts.history_excerpt`,
+best-effort via `~/.bash_history`) só na tela. Adicionado um botão "Baixar .txt"
+(`/users/<id>/history/download`) que baixa a última coleta como arquivo de texto (mesmo conteúdo
+já redigido de credenciais que aparece na tela, com um cabeçalho dizendo de quem/quando).
+
+**Sobre filtrar por intervalo de datas na coleta:** não é tecnicamente viável do jeito que a coleta
+funciona hoje. O `.bash_history` bruto **não grava data/hora de cada comando** por padrão em
+Linux - é só a lista de comandos, sem timestamp, a menos que o servidor tenha `HISTTIMEFORMAT`
+configurado (raro, e fora do controle do NEXUS, que só lê o arquivo como está). Sem timestamp por
+comando, não há como filtrar "comandos entre X e Y" a partir desse arquivo. O que dá pra filtrar,
+se for útil, é por **data da coleta** (`collected_facts.collected_at`, que já existe e é gravado a
+cada clique em "Coletar histórico") - cada coleta vira uma linha nova no banco (não sobrescreve a
+anterior), então já existe um histórico de coletas ao longo do tempo, só não tem tela pra navegar
+por ele (hoje só a mais recente é mostrada). Ainda não implementado - depende de decidir se vale a
+pena pra esse projeto.

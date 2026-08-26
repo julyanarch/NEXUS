@@ -6,6 +6,9 @@
     <form style="display:inline" method="post" action="{{ url_for('collect_history', user_id=user.id) }}">
       <button class="btn btn-outline" type="submit">Coletar histórico de comandos</button>
     </form>
+    {% if insights.commands.status == 'ok' and insights.commands.items %}
+    <a class="btn btn-outline" href="{{ url_for('download_history', user_id=user.id) }}">Baixar .txt</a>
+    {% endif %}
     {% if user.status != 'removed' %}
     <form style="display:inline" method="post" action="{{ url_for('force_removal', user_id=user.id) }}"
           data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?">
