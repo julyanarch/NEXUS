@@ -766,3 +766,14 @@ completa de flashes na primeira chamada de `get_flashed_messages()` na request -
 com filtro, reaproveita esse cache em vez de reconsultar a sessão, que já teria sido esvaziada.)
 Esse padrão (categoria com prefixo + filtro local) pode ser reaproveitado pra qualquer outra ação
 que precise de feedback perto do formulário, em vez de no topo da página.
+
+---
+
+## 31. Coluna de IP e filtro por IP na lista de Usuários
+
+A tela Usuários mostrava o nome do servidor (`s.name`), mas não o IP (`s.ssh_host`) - só dava pra
+ver o IP indo em Servidores. Adicionada a coluna **IP** (`USER_LIST_QUERY` passou a trazer
+`s.ssh_host AS server_ip`) e o campo de busca "Buscar (usuário/chamado)" passou a considerar IP
+também (`models.list_users()`: a cláusula de busca ganhou `OR s.ssh_host LIKE ?`) - útil pra achar
+todos os usuários geridos numa máquina física especifica direto pelo IP, sem precisar saber o nome
+que aquele servidor recebeu no NEXUS.

@@ -271,7 +271,7 @@ def decommission_server(server_id, reason, performed_by):
 # ---------------------------------------------------------- managed_users --
 
 USER_LIST_QUERY = """
-    SELECT mu.*, s.name AS server_name,
+    SELECT mu.*, s.name AS server_name, s.ssh_host AS server_ip,
            CAST((julianday('now') - julianday(mu.locked_at)) AS INTEGER) AS days_locked
     FROM managed_users mu
     JOIN servers s ON s.id = mu.server_id
@@ -287,8 +287,8 @@ def list_users(status=None, search=None):
         clauses.append("mu.status = ?")
         params.append(status)
     if search:
-        clauses.append("(mu.username LIKE ? OR mu.ticket LIKE ?)")
-        params.extend([f"%{search}%", f"%{search}%"])
+        clauses.append("(mu.username LIKE ? OR mu.ticket LIKE ? OR s.ssh_host LIKE ?)")
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
     query += " ORDER BY mu.updated_at DESC"

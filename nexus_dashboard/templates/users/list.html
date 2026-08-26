@@ -17,8 +17,8 @@
       </select>
     </div>
     <div class="form-group">
-      <label>Buscar (usuário/chamado)</label>
-      <input type="text" name="q" value="{{ search }}">
+      <label>Buscar (usuário/chamado/IP)</label>
+      <input type="text" name="q" value="{{ search }}" placeholder="ex.: julyana.silva, CHG1002 ou 10.1.88.21">
     </div>
     <div class="form-group"><button class="btn" type="submit">Filtrar</button></div>
   </form>
@@ -28,13 +28,14 @@
   <div class="table-scroll">
   <table>
     <thead>
-      <tr><th>Usuário</th><th>Servidor</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
+      <tr><th>Usuário</th><th>Servidor</th><th>IP</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
     </thead>
     <tbody>
       {% for u in users %}
       <tr>
         <td>{{ u.username }}</td>
         <td><span class="truncate" title="{{ u.server_name }}">{{ u.server_name }}</span></td>
+        <td>{{ u.server_ip }}</td>
         <td><span class="badge badge-{{ u.status }}">{{ u.status }}</span></td>
         <td>{{ u.days_locked if u.status == 'locked' else '-' }}</td>
         <td>{{ u.ticket or '-' }}</td>
@@ -42,7 +43,7 @@
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">detalhes / IA</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="muted">Nenhum usuário encontrado.</td></tr>
+      <tr><td colspan="8" class="muted">Nenhum usuário encontrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>
