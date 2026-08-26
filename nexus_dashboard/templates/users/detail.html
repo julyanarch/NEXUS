@@ -61,7 +61,7 @@
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0;">Comandos executados (best-effort)</h3>
+  <h3 style="margin-top:0;">Últimos comandos executados</h3>
   {% if insights.commands.status == 'ok' and insights.commands.lines %}
     <p class="muted">Coletado em {{ insights.commands.collected_at }}. Histórico não é garantia total (pode estar incompleto).</p>
     <pre>{{ insights.commands.lines | join('\n') }}</pre>
