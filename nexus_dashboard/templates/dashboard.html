@@ -113,7 +113,7 @@
       {% for u in expiring_users %}
       <tr>
         <td>{{ u.username }}</td>
-        <td><span class="truncate" title="{{ u.server_name }}">{{ u.server_name }}</span></td>
+        <td>{{ u.server_name | clean_server_name }}</td>
         <td>{{ u.days_locked }}</td>
         <td>{{ lock_max_days - (u.days_locked or 0) }}</td>
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">ver detalhes</a></td>
@@ -137,7 +137,7 @@
       {% for r in recent_runs %}
       <tr>
         <td>{{ r.performed_at }}</td>
-        <td><span class="truncate" title="{{ r.server_name or '' }}">{{ r.server_name or '-' }}</span></td>
+        <td>{{ (r.server_name | clean_server_name) or '-' }}</td>
         <td>{{ r.username }}</td>
         <td>{{ r.action }}</td>
         <td>{{ r.mode }}</td>

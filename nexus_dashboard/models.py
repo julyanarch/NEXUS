@@ -1,4 +1,5 @@
 import csv
+import re
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
@@ -14,6 +15,22 @@ def now_iso():
 # seja, o usuario ja existia no servidor antes de ser gerido por aqui. Ver
 # upsert_user_after_action().
 NOT_CREATED_VIA_NEXUS = "desconhecido (usuário já existia no servidor)"
+
+# Sufixo que decommission_server() acrescenta ao nome do servidor excluido
+# (ex.: "thierry [excluído 2026-08-26T11:16:27-03:00]") pra liberar o nome
+# original pra um novo cadastro (ver secao 13/15 da documentacao tecnica).
+_ARCHIVED_NAME_RE = re.compile(r"\s*\[exclu[ií]do[^\]]*\]\s*$")
+
+
+def display_server_name(name):
+    """Nome do servidor pra exibicao em listas/graficos soltos (Painel,
+    Usuarios, coluna Servidor de Execucoes) - sem o sufixo de arquivamento.
+    Evita, por exemplo, o mesmo servidor fisico aparecer feio ("thierry
+    [excluído ...]") e, se foi decomissionado mais de uma vez, aparecer
+    duplicado como se fossem servidores diferentes num grafico agregado."""
+    if not name:
+        return name
+    return _ARCHIVED_NAME_RE.sub("", name)
 
 
 def get_db():
@@ -453,17 +470,69 @@ def list_action_log_for_user(managed_user_id):
     return rows
 
 
-def list_recent_runs(limit=100):
+def list_recent_runs(limit=100, offset=0, server=None, username=None, action=None,
+                      mode=None, status=None, triggered_by=None, performed_by=None):
+    """Execucoes (action_log) com filtro opcional por coluna e paginacao.
+    Retorna (linhas_da_pagina, total_de_linhas_que_batem_o_filtro).
+
+    O filtro de servidor casa pelo nome de exibicao (sem sufixo de
+    arquivamento - ver display_server_name()): escolher "thierry" traz as
+    execucoes de QUALQUER linha de servidor chamada "thierry", incluindo as
+    que rodaram antes dele ser decomissionado/recriado - e o mesmo servidor
+    fisico pra quem esta consultando, mesmo com IDs diferentes no banco."""
     conn = get_db()
+    query = """FROM action_log al LEFT JOIN servers s ON s.id = al.server_id"""
+    clauses = []
+    params = []
+    if server:
+        clauses.append("(s.name = ? OR s.name LIKE ?)")
+        params.extend([server, f"{server} [exclu%"])
+    if username:
+        clauses.append("al.username LIKE ?")
+        params.append(f"%{username}%")
+    if action:
+        clauses.append("al.action = ?")
+        params.append(action)
+    if mode:
+        clauses.append("al.mode = ?")
+        params.append(mode)
+    if status:
+        clauses.append("al.status = ?")
+        params.append(status)
+    if triggered_by:
+        clauses.append("al.triggered_by = ?")
+        params.append(triggered_by)
+    if performed_by:
+        clauses.append("al.performed_by LIKE ?")
+        params.append(f"%{performed_by}%")
+    where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+
+    total = conn.execute(f"SELECT COUNT(*) AS c {query}{where}", params).fetchone()["c"]
     rows = conn.execute(
-        """SELECT al.*, s.name AS server_name
-           FROM action_log al
-           LEFT JOIN servers s ON s.id = al.server_id
-           ORDER BY al.performed_at DESC LIMIT ?""",
-        (limit,),
+        f"SELECT al.*, s.name AS server_name {query}{where} ORDER BY al.performed_at DESC LIMIT ? OFFSET ?",
+        params + [limit, offset],
     ).fetchall()
     conn.close()
-    return rows
+    return rows, total
+
+
+def list_distinct_action_log_servers():
+    """Nomes de servidor (ja limpos, sem sufixo de arquivamento, sem
+    duplicar) que ja tiveram alguma execucao registrada - pro filtro de
+    Servidor em Execucoes."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT s.name FROM action_log al JOIN servers s ON s.id = al.server_id"
+    ).fetchall()
+    conn.close()
+    return sorted({display_server_name(r["name"]) for r in rows})
+
+
+def list_distinct_action_log_actions():
+    conn = get_db()
+    rows = conn.execute("SELECT DISTINCT action FROM action_log ORDER BY action").fetchall()
+    conn.close()
+    return [r["action"] for r in rows]
 
 
 def daily_execution_counts(days=14):
@@ -499,19 +568,28 @@ def daily_execution_counts(days=14):
 def executions_per_server(days=30):
     """Total de execucoes por servidor nos ultimos `days` dias, para o
     grafico de magnitude do Painel. Inclui servidores sem nenhuma execucao
-    no periodo (aparecem com contagem zero)."""
+    no periodo (aparecem com contagem zero). Agrega por nome de exibicao
+    (sem o sufixo de arquivamento) - senao um servidor decomissionado mais
+    de uma vez aparece como varias barras separadas pro "mesmo" servidor."""
     conn = get_db()
     rows = conn.execute(
         """SELECT s.name AS server_name, COUNT(al.id) AS total
            FROM servers s
            LEFT JOIN action_log al
              ON al.server_id = s.id AND al.performed_at >= datetime('now', ?)
-           GROUP BY s.id
-           ORDER BY total DESC, s.name""",
+           GROUP BY s.id""",
         (f"-{days} days",),
     ).fetchall()
     conn.close()
-    return rows
+
+    merged = {}
+    for row in rows:
+        name = display_server_name(row["server_name"])
+        merged[name] = merged.get(name, 0) + row["total"]
+
+    result = [{"server_name": name, "total": total} for name, total in merged.items()]
+    result.sort(key=lambda r: (-r["total"], r["server_name"]))
+    return result
 
 
 # --------------------------------------------------------- collected_facts --

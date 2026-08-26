@@ -1,18 +1,69 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="page-header"><h1>Execuções</h1></div>
+<div class="page-header">
+  <h1>Execuções</h1>
+  {% if filters.values() | select | list %}
+  <a class="btn btn-sm btn-outline" href="{{ url_for('list_runs') }}">Limpar filtros</a>
+  {% endif %}
+</div>
 
 <div class="card">
   <div class="table-scroll">
+  <form method="get" id="runs-filter-form">
   <table>
     <thead>
       <tr><th>Quando</th><th>Servidor</th><th>Usuário</th><th>Ação</th><th>Modo</th><th>Status</th><th>Origem</th><th>Por</th><th>Detalhe</th></tr>
+      <tr class="filter-row">
+        <th></th>
+        <th>
+          <select name="server" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            {% for s in filter_servers %}
+            <option value="{{ s }}" {{ 'selected' if filters.server == s }}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </th>
+        <th><input type="text" name="username" value="{{ filters.username or '' }}" placeholder="usuário"></th>
+        <th>
+          <select name="action" onchange="this.form.submit()">
+            <option value="">Todas</option>
+            {% for a in filter_actions %}
+            <option value="{{ a }}" {{ 'selected' if filters.action == a }}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </th>
+        <th>
+          <select name="mode" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="dry-run" {{ 'selected' if filters.mode == 'dry-run' }}>dry-run</option>
+            <option value="apply" {{ 'selected' if filters.mode == 'apply' }}>apply</option>
+          </select>
+        </th>
+        <th>
+          <select name="status" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="ok" {{ 'selected' if filters.status == 'ok' }}>ok</option>
+            <option value="failed" {{ 'selected' if filters.status == 'failed' }}>failed</option>
+            <option value="blocked" {{ 'selected' if filters.status == 'blocked' }}>blocked</option>
+            <option value="skipped" {{ 'selected' if filters.status == 'skipped' }}>skipped</option>
+          </select>
+        </th>
+        <th>
+          <select name="triggered_by" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="manual" {{ 'selected' if filters.triggered_by == 'manual' }}>manual</option>
+            <option value="automatic" {{ 'selected' if filters.triggered_by == 'automatic' }}>automático</option>
+          </select>
+        </th>
+        <th><input type="text" name="performed_by" value="{{ filters.performed_by or '' }}" placeholder="operador"></th>
+        <th><button class="btn btn-sm" type="submit">Filtrar</button></th>
+      </tr>
     </thead>
     <tbody>
       {% for r in runs %}
       <tr>
         <td>{{ r.performed_at }}</td>
-        <td><span class="truncate" title="{{ r.server_name or '' }}">{{ r.server_name or '-' }}</span></td>
+        <td>{{ (r.server_name | clean_server_name) or '-' }}</td>
         <td>{{ r.username or '-' }}</td>
         <td>{{ r.action }}</td>
         <td>{{ r.mode }}</td>
@@ -28,10 +79,32 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="muted">Nenhuma execução registrada.</td></tr>
+      <tr><td colspan="9" class="muted">Nenhuma execução encontrada com esse filtro.</td></tr>
       {% endfor %}
     </tbody>
   </table>
+  </form>
   </div>
+
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    <span class="muted">Página {{ page }} de {{ total_pages }} ({{ total }} execuç{{ 'ão' if total == 1 else 'ões' }})</span>
+    <div class="pagination-links">
+      {% if page > 1 %}
+      <a class="btn btn-sm btn-outline" href="{{ url_for('list_runs', page=page-1, **filters) }}">‹ anterior</a>
+      {% endif %}
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+        <a class="btn btn-sm {{ 'btn-outline' if p != page }}" href="{{ url_for('list_runs', page=p, **filters) }}">{{ p }}</a>
+        {% elif p == page - 3 or p == page + 3 %}
+        <span class="muted">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+      <a class="btn btn-sm btn-outline" href="{{ url_for('list_runs', page=page+1, **filters) }}">próxima ›</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

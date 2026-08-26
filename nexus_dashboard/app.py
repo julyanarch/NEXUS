@@ -21,6 +21,7 @@ from scheduler import start_scheduler
 def create_app():
     app = Flask(__name__)
     app.secret_key = config.SECRET_KEY
+    app.jinja_env.filters["clean_server_name"] = models.display_server_name
 
     os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
     os.makedirs(config.ARTIFACTS_DIR, exist_ok=True)
@@ -121,7 +122,7 @@ def register_routes(app):
             u for u in models.list_locked_users()
             if (u["days_locked"] or 0) >= config.LOCK_WARNING_DAYS
         ]
-        recent_runs = models.list_recent_runs(limit=10)
+        recent_runs, _ = models.list_recent_runs(limit=10)
         return render_template(
             "dashboard.html", counts=counts, expiring_users=expiring_users, recent_runs=recent_runs,
             status_chart=charts.build_status_chart(counts),
@@ -609,7 +610,31 @@ def register_routes(app):
 
     @app.route("/runs")
     def list_runs():
-        return render_template("runs/list.html", runs=models.list_recent_runs(limit=200))
+        filters = {
+            "server": request.args.get("server") or None,
+            "username": request.args.get("username") or None,
+            "action": request.args.get("action") or None,
+            "mode": request.args.get("mode") or None,
+            "status": request.args.get("status") or None,
+            "triggered_by": request.args.get("triggered_by") or None,
+            "performed_by": request.args.get("performed_by") or None,
+        }
+        try:
+            page = max(int(request.args.get("page", 1)), 1)
+        except ValueError:
+            page = 1
+        per_page = config.RUNS_PER_PAGE
+
+        runs, total = models.list_recent_runs(limit=per_page, offset=(page - 1) * per_page, **filters)
+        total_pages = max((total + per_page - 1) // per_page, 1)
+        page = min(page, total_pages)
+
+        return render_template(
+            "runs/list.html", runs=runs, filters=filters, page=page, total_pages=total_pages,
+            total=total, per_page=per_page,
+            filter_servers=models.list_distinct_action_log_servers(),
+            filter_actions=models.list_distinct_action_log_actions(),
+        )
 
 
 if __name__ == "__main__":

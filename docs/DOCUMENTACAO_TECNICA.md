@@ -777,3 +777,48 @@ ver o IP indo em Servidores. Adicionada a coluna **IP** (`USER_LIST_QUERY` passo
 também (`models.list_users()`: a cláusula de busca ganhou `OR s.ssh_host LIKE ?`) - útil pra achar
 todos os usuários geridos numa máquina física especifica direto pelo IP, sem precisar saber o nome
 que aquele servidor recebeu no NEXUS.
+
+---
+
+## 32. Nome de servidor decomissionado poluindo Painel/Usuários/Execuções
+
+O sufixo de arquivamento (`nome [excluído <data>]`, seção 13/15) aparecia em toda lista que
+mostra nome de servidor - Painel (inclusive **duplicado** no gráfico "Execuções por servidor",
+porque cada decomissionamento gera uma linha diferente na tabela `servers`, cada uma virando sua
+própria barra), Usuários e a coluna Servidor de Execuções. Feio visualmente e, no gráfico, dava a
+entender que eram servidores diferentes quando é o mesmo físico.
+
+**Correção:**
+
+- `models.display_server_name()` - remove o sufixo `[excluído ...]` pra exibição. Registrado como
+  filtro Jinja (`clean_server_name`) e aplicado em toda coluna/rótulo de servidor solto (Painel,
+  Usuários, coluna Servidor de Execuções).
+- `models.executions_per_server()` agora **agrega por nome de exibição** (não mais por `s.id`) -
+  as barras de servidores decomissionados do mesmo físico se somam numa única barra, em vez de
+  aparecerem separadas.
+- O texto completo com o sufixo nunca precisou aparecer em lugar nenhum de propósito - a mensagem
+  de auditoria da ação `decommission_server` (coluna Detalhe de Execuções) já usa o nome original
+  limpo, capturado *antes* do arquivamento (`server["name"]` em `app.py`, lido antes de chamar
+  `models.decommission_server()`), então "aparecer só no detalhe" já acontecia por conta própria -
+  não precisou de nenhuma lógica nova ali.
+
+## 33. Filtros por coluna e paginação em Execuções
+
+A tabela de Execuções só crescia (sem filtro nem paginação), ficando cada vez mais difícil de usar
+conforme mais ações eram registradas.
+
+- **Filtros:** uma segunda linha de cabeçalho na própria tabela (`tr.filter-row`), com um
+  campo por coluna filtrável - Servidor (select, populado com `models.list_distinct_action_log_servers()`,
+  já usando nome de exibição limpo), Usuário (texto), Ação (select, `models.list_distinct_action_log_actions()`),
+  Modo (`dry-run`/`apply`), Status (`ok`/`failed`/`blocked`/`skipped`), Origem (`manual`/`automático`)
+  e Por (texto). Os selects submetem sozinhos ao trocar (`onchange="this.form.submit()"`); os campos
+  de texto usam o botão "Filtrar". "Quando" e "Detalhe" não têm filtro (livre demais/sem categoria).
+  O filtro de Servidor casa pelo **nome de exibição** (`s.name = ? OR s.name LIKE '<nome> [exclu%'`),
+  então escolher "thierry" traz execuções de qualquer linha de servidor chamada assim, incluindo as
+  de antes dele ser decomissionado/recriado (mesmo servidor físico pra quem consulta, mesmo com
+  IDs diferentes no banco).
+- **Paginação:** `models.list_recent_runs()` passou a aceitar `limit`/`offset` + os filtros acima,
+  e retornar `(linhas_da_pagina, total_que_bate_o_filtro)` em vez de só uma lista. `config.RUNS_PER_PAGE`
+  (25) define o tamanho da página. A tela mostra números de página (com reticências quando há
+  muitas), anterior/próxima, e "Página X de Y (Z execuções)" - preservando os filtros ativos ao
+  trocar de página (`url_for('list_runs', page=N, **filters)`).

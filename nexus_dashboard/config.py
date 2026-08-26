@@ -58,6 +58,9 @@ TIMELINE_DAYS = 14
 TIMELINE_CHART_HEIGHT_PX = 80
 SERVER_CHART_WINDOW_DAYS = 30
 
+# Quantas linhas por pagina na tela Execucoes.
+RUNS_PER_PAGE = 25
+
 SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET", "nexus-dashboard-dev-secret")
 
 # Depois de quanto tempo sem trocar a identificacao de operador (tela

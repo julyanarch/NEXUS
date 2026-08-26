@@ -34,7 +34,7 @@
       {% for u in users %}
       <tr>
         <td>{{ u.username }}</td>
-        <td><span class="truncate" title="{{ u.server_name }}">{{ u.server_name }}</span></td>
+        <td>{{ u.server_name | clean_server_name }}</td>
         <td>{{ u.server_ip }}</td>
         <td><span class="badge badge-{{ u.status }}">{{ u.status }}</span></td>
         <td>{{ u.days_locked if u.status == 'locked' else '-' }}</td>

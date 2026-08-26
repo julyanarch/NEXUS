@@ -188,6 +188,28 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bor
 th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; }
 tr:hover td { background: rgba(139, 92, 246, 0.06); }
 
+/* Linha de filtros por coluna (ex.: Execucoes) - inputs/selects compactos,
+   sem uppercase/negrito herdado do th, largura minima pra nao espremer. */
+tr.filter-row th { padding-top: 4px; padding-bottom: 8px; text-transform: none; font-weight: 400; }
+tr.filter-row input, tr.filter-row select {
+  width: 100%;
+  min-width: 90px;
+  padding: 5px 6px;
+  font-size: 0.78rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.pagination-links { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
 /* Colunas com texto naturalmente longo (mensagens, nomes) precisam poder
    quebrar linha - senao elas sozinhas forcam a tabela toda a alargar. */
 td.wrap { white-space: normal; }
