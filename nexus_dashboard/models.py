@@ -35,6 +35,11 @@ def _migrate_schema():
     if "sudo_nopasswd" not in existing_columns:
         conn.execute("ALTER TABLE servers ADD COLUMN sudo_nopasswd INTEGER NOT NULL DEFAULT 0")
         conn.commit()
+    if "decommissioned_at" not in existing_columns:
+        conn.execute("ALTER TABLE servers ADD COLUMN decommissioned_at TEXT")
+        conn.execute("ALTER TABLE servers ADD COLUMN decommissioned_by TEXT")
+        conn.execute("ALTER TABLE servers ADD COLUMN decommission_reason TEXT")
+        conn.commit()
     conn.close()
 
 
@@ -69,10 +74,17 @@ def _seed_servers_from_legacy_conf():
 
 # ---------------------------------------------------------------- servers --
 
-def list_servers(conn=None):
+def list_servers(conn=None, include_decommissioned=False):
+    """Por padrao, so traz servidores ativos - um servidor excluido/decomissionado
+    (que tinha historico e por isso nao pode ser apagado de verdade, ver
+    decommission_server) some da lista e de qualquer selecao de destino, mas
+    a linha continua no banco pra nao quebrar a auditoria ja registrada."""
     own = conn is None
     conn = conn or get_db()
-    rows = conn.execute("SELECT * FROM servers ORDER BY name").fetchall()
+    if include_decommissioned:
+        rows = conn.execute("SELECT * FROM servers ORDER BY name").fetchall()
+    else:
+        rows = conn.execute("SELECT * FROM servers WHERE decommissioned_at IS NULL ORDER BY name").fetchall()
     if own:
         conn.close()
     return rows
@@ -179,8 +191,27 @@ def server_has_history(server_id):
 
 
 def delete_server(server_id):
+    """Apaga o servidor de verdade - so seguro quando server_has_history() e
+    False (senao a FK de managed_users/action_log pra esse servidor quebra)."""
     conn = get_db()
     conn.execute("DELETE FROM servers WHERE id = ?", (server_id,))
+    conn.commit()
+    conn.close()
+
+
+def decommission_server(server_id, reason, performed_by):
+    """'Exclusao' de um servidor que ja tem historico: nao apaga a linha (isso
+    quebraria a FK de managed_users/action_log e derrubaria a auditoria ja
+    registrada) - marca como decomissionado, com motivo e quem fez, e some da
+    lista/telas de selecao (list_servers), mas fica disponivel pra consulta
+    futura direto no banco ou via a linha de auditoria em log_action()."""
+    conn = get_db()
+    ts = now_iso()
+    conn.execute(
+        """UPDATE servers SET decommissioned_at=?, decommissioned_by=?, decommission_reason=?,
+           enabled=0, updated_at=? WHERE id=?""",
+        (ts, performed_by, reason, ts, server_id),
+    )
     conn.commit()
     conn.close()
 

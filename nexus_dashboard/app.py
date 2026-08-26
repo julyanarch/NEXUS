@@ -289,11 +289,30 @@ def register_routes(app):
         if server is None:
             flash("Servidor nao encontrado.", "danger")
             return redirect(url_for("list_servers"))
+
         if models.server_has_history(server_id):
+            reason = request.form.get("reason", "").strip()
+            if not reason:
+                flash(
+                    f'"{server["name"]}" tem usuarios ou execucoes registradas - informe o motivo '
+                    "da exclusao (ex.: descomissionamento de maquina) para continuar.",
+                    "danger",
+                )
+                return redirect(url_for("list_servers"))
+            operator = session["operator_name"]
+            models.decommission_server(server_id, reason, operator)
+            models.log_action(
+                managed_user_id=None, server_id=server_id, username=None,
+                action="decommission_server", mode="apply", status="ok",
+                message=f'Servidor "{server["name"]}" excluido. Motivo: {reason}',
+                ticket="", groups_snapshot="", shell_snapshot="",
+                performed_by=operator, triggered_by="manual",
+            )
+            inventory_builder.rebuild_inventory()
             flash(
-                f'"{server["name"]}" tem usuarios ou execucoes registradas e nao pode ser '
-                "excluido (perderia auditoria) - use \"desabilitar\" em vez disso.",
-                "danger",
+                f'"{server["name"]}" foi excluido. Como ele tinha historico, o registro de '
+                "auditoria (com o motivo) foi preservado - consulte em Execuções.",
+                "success",
             )
             return redirect(url_for("list_servers"))
 

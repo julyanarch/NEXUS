@@ -345,3 +345,40 @@ NOPASSWD, que não têm essa pasta.
 
 **Como confirmar que passou a funcionar:** rodar a ação de novo no mesmo servidor — assim como
 outras falhas de auditoria, o registro antigo `failed` não se reescreve sozinho.
+
+---
+
+## 13. Exclusão de servidor com histórico — "soft delete" com motivo
+
+Antes, um servidor com usuários ou execuções registradas simplesmente **não podia** ser excluído
+(o botão nem aparecia) — a única saída era "desabilitar". Isso mudou: todo servidor agora tem
+botão de excluir, mas o comportamento por trás depende de ter histórico ou não.
+
+**Por que não dá pra simplesmente apagar a linha quando há histórico:** as tabelas
+`managed_users`, `action_log` e `collected_facts` referenciam `servers.id` por chave estrangeira
+(`PRAGMA foreign_keys = ON`). Um `DELETE FROM servers` com histórico ligado quebraria essa
+referência (ou apagaria o rastro de auditoria, se as FKs não estivessem ativas) — exatamente o que
+não se quer num sistema cujo propósito é auditoria.
+
+**Como funciona agora:**
+
+- **Sem histórico** (nenhum usuário/execução ligado): exclusão de verdade (`DELETE`), como antes —
+  só pede confirmação simples.
+- **Com histórico**: a exclusão pede o **motivo** (ex.: "descomissionamento de máquina", "servidor
+  substituído") via prompt no navegador; o servidor não é apagado do banco — é marcado como
+  **decomissionado** (`decommissioned_at`, `decommissioned_by`, `decommission_reason` na tabela
+  `servers`, `enabled=0`), some da lista de Servidores e de qualquer seleção de destino de ação
+  (`models.list_servers()` filtra por padrão), mas a linha continua existindo (preserva a FK). O
+  motivo também é gravado como uma linha normal em `action_log` (ação
+  `decommission_server`) — visível na tela **Execuções**, junto com quem fez e quando, do mesmo
+  jeito que qualquer outra ação de auditoria.
+
+## 14. Layout dos botões de ação (lista de Servidores)
+
+Cada linha da tabela podia ter uma combinação diferente de botões (ex.: "senha sudo" some quando
+o servidor é NOPASSWD), então o agrupamento simples (flexbox) fazia os botões desalinharem entre
+linhas — e, numa tentativa seguinte de dar uma coluna de tabela por botão, a tabela ficou larga
+demais e passou a exigir rolagem horizontal. A solução final usa **CSS Grid com colunas de largura
+fixa** dentro de uma única célula "Ações": cada ação sempre cai na mesma posição horizontal em
+todas as linhas (mesmo quando o botão daquela posição muda de texto, ex. "habilitar" x
+"desabilitar", ou vira um placeholder "—"), sem abrir novas colunas na tabela.

@@ -93,17 +93,24 @@ a:hover { text-decoration: underline; }
 .btn-danger:hover { background: var(--danger); }
 .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 
+/* Grid de acoes por linha de tabela (ex.: lista de Servidores): colunas
+   largura fixa, sempre na mesma ordem, entao os botoes alinham verticalmente
+   entre as linhas mesmo quando o conteudo de uma acao muda (ex.: "habilitar"
+   x "desabilitar") - sem depender de quantas acoes cabem por linha (flex-wrap
+   reflui e desalinha) nem de uma coluna de tabela por acao (larga demais,
+   forca scroll horizontal). display:contents no form tira o form do fluxo do
+   grid e deixa o botao ser o item do grid diretamente.
+ */
 .actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: 52px 100px 84px 72px 88px 64px;
   gap: 6px;
+  align-items: center;
 }
-.actions form { display: inline-flex; margin: 0; }
+.actions form { display: contents; }
+.actions .btn, .actions .muted { width: 100%; text-align: center; white-space: nowrap; }
 
 .table-scroll { overflow-x: auto; }
-table td form { margin: 0; }
-table td .btn, table td .btn-sm { white-space: nowrap; }
 
 .card {
   background: var(--bg-card);

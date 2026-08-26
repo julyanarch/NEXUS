@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS servers (
     sudo_nopasswd INTEGER NOT NULL DEFAULT 0,
     last_test_status TEXT,
     last_test_at TEXT,
+    decommissioned_at TEXT,
+    decommissioned_by TEXT,
+    decommission_reason TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );

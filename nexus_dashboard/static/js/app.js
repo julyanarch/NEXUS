@@ -8,6 +8,22 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  // Exclusao que precisa de motivo (ex.: servidor com historico) - pede o
+  // motivo por prompt, grava no input escondido, e so deixa enviar se algo
+  // foi digitado (senao a validacao do servidor barra de qualquer jeito).
+  document.querySelectorAll("[data-prompt-reason]").forEach(function (el) {
+    el.addEventListener("submit", function (event) {
+      var message = el.getAttribute("data-prompt-reason");
+      var reason = window.prompt(message, "");
+      if (!reason || !reason.trim()) {
+        event.preventDefault();
+        return;
+      }
+      var input = el.querySelector(".js-delete-reason");
+      if (input) input.value = reason.trim();
+    });
+  });
+
   var serverChecks = document.querySelectorAll(".js-server-check");
   var bulkField = document.getElementById("bulk_confirmation_group");
   function toggleBulkField() {
