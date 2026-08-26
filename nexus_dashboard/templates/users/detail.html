@@ -3,15 +3,18 @@
 <div class="page-header">
   <h1>{{ user.username }} <span class="badge badge-{{ user.status }}">{{ user.status }}</span></h1>
   <div>
-    <form style="display:inline" method="post" action="{{ url_for('collect_history', user_id=user.id) }}">
+    <form style="display:inline" method="post" action="{{ url_for('collect_history', user_id=user.id) }}"
+          title="Conecta no servidor agora e le o ~/.bash_history desse usuario (best-effort - pode estar vazio, incompleto ou desativado). Cada clique guarda uma nova coleta, sem apagar as anteriores.">
       <button class="btn btn-outline" type="submit">Coletar histórico de comandos</button>
     </form>
     {% if insights.commands.status == 'ok' and insights.commands.items %}
-    <a class="btn btn-outline" href="{{ url_for('download_history', user_id=user.id) }}">Baixar .txt</a>
+    <a class="btn btn-outline" href="{{ url_for('download_history', user_id=user.id) }}"
+       title="Baixa a coleta mais recente (mostrada abaixo) como arquivo .txt.">Baixar .txt</a>
     {% endif %}
     {% if user.status != 'removed' %}
     <form style="display:inline" method="post" action="{{ url_for('force_removal', user_id=user.id) }}"
-          data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?">
+          data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?"
+          title="Executa a remocao (userdel) agora, sem esperar os {{ lock_max_days }} dias de bloqueio ate a remocao automatica.">
       <button class="btn btn-danger" type="submit">Forçar remoção agora</button>
     </form>
     {% endif %}
@@ -69,6 +72,33 @@
       {% elif insights.commands.status == 'error' %}Falha ao coletar o histórico.
       {% else %}Histórico ainda não coletado. Use o botão "Coletar histórico de comandos".{% endif %}
     </p>
+  {% endif %}
+
+  {% if history_collections|length > 1 %}
+  <details style="margin-top:14px;">
+    <summary class="muted">Coletas anteriores ({{ history_collections|length }}) — baixar por data</summary>
+    <div class="table-scroll" style="margin-top:8px;">
+    <table>
+      <thead><tr><th>Coletado em</th><th>Resultado</th><th></th></tr></thead>
+      <tbody>
+        {% for c in history_collections %}
+        <tr>
+          <td>{{ c.collected_at }}</td>
+          <td>
+            {% if c.collection_status == 'ok' %}<span class="badge badge-active">ok</span>
+            {% else %}<span class="badge badge-removed">{{ c.collection_status }}</span>{% endif %}
+          </td>
+          <td>
+            {% if c.collection_status == 'ok' and c.history_excerpt %}
+            <a href="{{ url_for('download_history', user_id=user.id, fact_id=c.id) }}">baixar .txt</a>
+            {% else %}<span class="muted">-</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </details>
   {% endif %}
 </div>
 

@@ -565,6 +565,32 @@ def latest_collected_facts(managed_user_id):
     return row
 
 
+def list_collected_facts_for_user(managed_user_id):
+    """Todas as coletas de historico ja feitas pra esse usuario (uma por
+    clique em "Coletar historico de comandos"), da mais recente pra mais
+    antiga - cada coleta e uma "foto" independente, nao sobrescreve a
+    anterior. Usado pra deixar escolher qual data baixar."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT * FROM collected_facts WHERE managed_user_id = ? ORDER BY collected_at DESC",
+        (managed_user_id,),
+    ).fetchall()
+    conn.close()
+    return rows
+
+
+def get_collected_facts(fact_id, managed_user_id):
+    """Uma coleta especifica, restrita ao usuario informado (evita baixar a
+    coleta de outro usuario so trocando o numero na URL)."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM collected_facts WHERE id = ? AND managed_user_id = ?",
+        (fact_id, managed_user_id),
+    ).fetchone()
+    conn.close()
+    return row
+
+
 # --------------------------------------------------------- scheduler_runs --
 
 def try_start_scheduler_run(run_type, run_date):

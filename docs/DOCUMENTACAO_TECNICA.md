@@ -549,3 +549,31 @@ inventar uma data/autor de criação que nunca existiu.
 não há backfill automático - a linha de auditoria em Execuções continua correta e intacta, só a
 listagem de Usuários não vai mostrar esse usuário retroativamente. Não é grave pra dado de teste;
 se precisar reconstituir um caso real depois, dá pra fazer manualmente a partir do `action_log`.
+
+---
+
+## 22. remove x delete x purge, e download de histórico com "filtro de data"
+
+**Diferença entre as ações** (definidas em `nexus_sanitize_users.sh`):
+
+| Ação | Comando | Home directory |
+|---|---|---|
+| `remove` | `userdel` | Depende do campo "Home" do formulário (`yes` apaga, `no` mantém) |
+| `delete` | Idêntico a `remove` (mesmo trecho de código) — sinônimo interno, não aparece como opção no formulário | Mesma regra de `remove` |
+| `purge` | `userdel -r` sempre | Sempre apaga a home, **independente** do campo "Home" |
+| `lock` | `usermod -L` + `chage -E 0` | Não mexe (reversível, não remove nada) |
+
+Nenhuma dessas ações depende de o usuário já ter sido "criado" pelo NEXUS antes — o script roda
+direto no usuário do Linux que for digitado no formulário, então funciona normalmente em contas
+que já existiam no servidor antes do projeto existir (ver seção 21 sobre o registro ficar visível
+em Usuários).
+
+**Download do histórico com "filtro de data":** como explicado na seção 20, o `.bash_history`
+bruto não grava data/hora por comando, então filtrar comandos individuais por data não é possível.
+O que foi implementado é filtrar por **data da coleta**: cada clique em "Coletar histórico de
+comandos" grava uma linha nova em `collected_facts` (não sobrescreve a anterior). Quando existe
+mais de uma coleta pra um usuário, a tela de detalhe mostra um `<details>` "Coletas anteriores"
+com a lista de todas as datas já coletadas e um link "baixar .txt" por linha
+(`models.list_collected_facts_for_user()` / rota `/users/<id>/history/download/<fact_id>`); o
+botão "Baixar .txt" no topo continua baixando sempre a mais recente
+(`/users/<id>/history/download`, sem `fact_id`).
