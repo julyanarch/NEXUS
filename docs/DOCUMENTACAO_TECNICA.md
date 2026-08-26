@@ -382,3 +382,39 @@ demais e passou a exigir rolagem horizontal. A solução final usa **CSS Grid co
 fixa** dentro de uma única célula "Ações": cada ação sempre cai na mesma posição horizontal em
 todas as linhas (mesmo quando o botão daquela posição muda de texto, ex. "habilitar" x
 "desabilitar", ou vira um placeholder "—"), sem abrir novas colunas na tabela.
+
+---
+
+## 15. Bug: "database is locked" ao recadastrar um servidor recém-excluído
+
+Sintoma: excluir um servidor com histórico (ex.: "thierry") e, na sequência, cadastrar um novo
+servidor com o **mesmo nome** derrubava a aplicação com `sqlite3.OperationalError: database is
+locked`.
+
+**Causa raiz, em duas partes:**
+
+1. A coluna `servers.name` é `UNIQUE`. A exclusão de servidor com histórico (seção 13) não apaga
+   a linha — ela continua ocupando esse nome. Cadastrar outro servidor com o mesmo nome batia
+   direto nessa restrição e o `INSERT` falhava (`IntegrityError`).
+2. `models.create_server()` não tinha `try/finally`: quando o `INSERT` falhava, a conexão SQLite
+   ficava aberta (nunca chegava no `conn.close()`). Com o Flask em modo debug, o traceback
+   interativo mantém aquele quadro de execução vivo na memória — inclusive a conexão travada -,
+   então o banco ficava bloqueado até a aplicação ser reiniciada. Esse é um padrão perigoso que
+   existia em praticamente toda função de escrita do `models.py`: qualquer erro no meio de um
+   `INSERT`/`UPDATE` tinha o mesmo risco.
+
+**Correção:**
+
+- `decommission_server()` agora **arquiva o nome** do servidor excluído (sufixo com a data, ex.
+  `thierry [excluído 2026-08-26T10:40:00-03:00]`) em vez de manter o nome original - libera o nome
+  para um novo cadastro, e ainda deixa claro nas Execuções antigas que aquele registro é de um
+  servidor que já foi decomissionado (evita confundir com um novo servidor que reuse o mesmo nome
+  depois).
+- Todas as funções de escrita em `models.py` passaram a usar `try/finally` para garantir
+  `conn.close()` mesmo quando a operação falha.
+- `get_db()` agora abre a conexão com `timeout=10` e `PRAGMA busy_timeout=10000` - o agendador
+  (thread separada, roda todo dia às 03:00) e as requisições web podem gravar quase ao mesmo
+  tempo; isso faz o SQLite aguardar até 10s por uma trava breve em vez de falhar na hora.
+
+**Se a trava já tiver acontecido:** reiniciar o processo do Flask (`Ctrl+C` e `python app.py` de
+novo) libera na hora - a trava é presa à conexão/processo, não ao arquivo em si.

@@ -10,9 +10,14 @@ def now_iso():
 
 
 def get_db():
-    conn = sqlite3.connect(config.DB_PATH)
+    # timeout/busy_timeout: o agendador (thread separada, ver scheduler.py)
+    # e as requisicoes web podem gravar quase ao mesmo tempo - sem isso, o
+    # SQLite falha na hora com "database is locked" em vez de aguardar a
+    # outra escrita (rapida) liberar.
+    conn = sqlite3.connect(config.DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 10000")
     return conn
 
 
@@ -102,64 +107,72 @@ def get_server(server_id, conn=None):
 def create_server(name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False, conn=None):
     own = conn is None
     conn = conn or get_db()
-    ts = now_iso()
-    cursor = conn.execute(
-        """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0, ts, ts),
-    )
-    conn.commit()
-    new_id = cursor.lastrowid
-    if own:
-        conn.close()
-    return new_id
+    try:
+        ts = now_iso()
+        cursor = conn.execute(
+            """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0, ts, ts),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        if own:
+            conn.close()
 
 
 def set_server_sudo_nopasswd(server_id, sudo_nopasswd):
     conn = get_db()
-    conn.execute(
-        "UPDATE servers SET sudo_nopasswd=?, updated_at=? WHERE id=?",
-        (1 if sudo_nopasswd else 0, now_iso(), server_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "UPDATE servers SET sudo_nopasswd=?, updated_at=? WHERE id=?",
+            (1 if sudo_nopasswd else 0, now_iso(), server_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def update_server(server_id, name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False):
     conn = get_db()
-    conn.execute(
-        """UPDATE servers SET name=?, ssh_host=?, ssh_user=?, ssh_port=?, enabled=?, sudo_nopasswd=?,
-           updated_at=? WHERE id=?""",
-        (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0,
-         now_iso(), server_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            """UPDATE servers SET name=?, ssh_host=?, ssh_user=?, ssh_port=?, enabled=?, sudo_nopasswd=?,
+               updated_at=? WHERE id=?""",
+            (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0,
+             now_iso(), server_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def set_server_test_result(server_id, status):
     conn = get_db()
-    conn.execute(
-        "UPDATE servers SET last_test_status=?, last_test_at=?, updated_at=? WHERE id=?",
-        (status, now_iso(), now_iso(), server_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            "UPDATE servers SET last_test_status=?, last_test_at=?, updated_at=? WHERE id=?",
+            (status, now_iso(), now_iso(), server_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def toggle_server(server_id):
     conn = get_db()
-    row = conn.execute("SELECT enabled FROM servers WHERE id=?", (server_id,)).fetchone()
-    if row is None:
+    try:
+        row = conn.execute("SELECT enabled FROM servers WHERE id=?", (server_id,)).fetchone()
+        if row is None:
+            return
+        new_value = 0 if row["enabled"] else 1
+        conn.execute(
+            "UPDATE servers SET enabled=?, updated_at=? WHERE id=?",
+            (new_value, now_iso(), server_id),
+        )
+        conn.commit()
+    finally:
         conn.close()
-        return
-    new_value = 0 if row["enabled"] else 1
-    conn.execute(
-        "UPDATE servers SET enabled=?, updated_at=? WHERE id=?",
-        (new_value, now_iso(), server_id),
-    )
-    conn.commit()
-    conn.close()
 
 
 def find_servers_by_host(ssh_host, exclude_id=None):
@@ -194,9 +207,11 @@ def delete_server(server_id):
     """Apaga o servidor de verdade - so seguro quando server_has_history() e
     False (senao a FK de managed_users/action_log pra esse servidor quebra)."""
     conn = get_db()
-    conn.execute("DELETE FROM servers WHERE id = ?", (server_id,))
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute("DELETE FROM servers WHERE id = ?", (server_id,))
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def decommission_server(server_id, reason, performed_by):
@@ -204,16 +219,26 @@ def decommission_server(server_id, reason, performed_by):
     quebraria a FK de managed_users/action_log e derrubaria a auditoria ja
     registrada) - marca como decomissionado, com motivo e quem fez, e some da
     lista/telas de selecao (list_servers), mas fica disponivel pra consulta
-    futura direto no banco ou via a linha de auditoria em log_action()."""
+    futura direto no banco ou via a linha de auditoria em log_action().
+
+    O nome tambem e arquivado (sufixo com a data) - a coluna `name` e UNIQUE,
+    entao sem isso o nome original ficaria preso para sempre no servidor
+    decomissionado e um novo cadastro com o mesmo nome falharia."""
     conn = get_db()
-    ts = now_iso()
-    conn.execute(
-        """UPDATE servers SET decommissioned_at=?, decommissioned_by=?, decommission_reason=?,
-           enabled=0, updated_at=? WHERE id=?""",
-        (ts, performed_by, reason, ts, server_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        ts = now_iso()
+        server = conn.execute("SELECT name FROM servers WHERE id=?", (server_id,)).fetchone()
+        if server is None:
+            return
+        archived_name = f"{server['name']} [excluído {ts}]"
+        conn.execute(
+            """UPDATE servers SET name=?, decommissioned_at=?, decommissioned_by=?, decommission_reason=?,
+               enabled=0, updated_at=? WHERE id=?""",
+            (archived_name, ts, performed_by, reason, ts, server_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ---------------------------------------------------------- managed_users --
@@ -266,56 +291,56 @@ def upsert_user_after_action(username, server_id, action, groups_csv, shell, hom
                                ticket, reason, performed_by):
     """Cria ou atualiza o registro local do usuario apos uma acao aplicada com sucesso."""
     conn = get_db()
-    existing = conn.execute(
-        "SELECT * FROM managed_users WHERE username=? AND server_id=?",
-        (username, server_id),
-    ).fetchone()
-    ts = now_iso()
+    try:
+        existing = conn.execute(
+            "SELECT * FROM managed_users WHERE username=? AND server_id=?",
+            (username, server_id),
+        ).fetchone()
+        ts = now_iso()
 
-    if action in ("create", "add"):
-        if existing:
-            status = "active"
-        else:
+        if action in ("create", "add"):
+            if existing:
+                conn.execute(
+                    "UPDATE managed_users SET status='active', groups_csv=?, shell=?, ticket=?, reason=?, updated_at=? WHERE id=?",
+                    (groups_csv, shell, ticket, reason, ts, existing["id"]),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO managed_users
+                       (username, server_id, status, groups_csv, shell, home_policy, ticket, reason,
+                        created_ticket, created_reason, created_at, created_by, updated_at)
+                       VALUES (?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (username, server_id, groups_csv, shell, home_policy, ticket, reason, ticket, reason,
+                     ts, performed_by, ts),
+                )
+        elif action == "lock":
             conn.execute(
-                """INSERT INTO managed_users
-                   (username, server_id, status, groups_csv, shell, home_policy, ticket, reason,
-                    created_ticket, created_reason, created_at, created_by, updated_at)
-                   VALUES (?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (username, server_id, groups_csv, shell, home_policy, ticket, reason, ticket, reason,
-                 ts, performed_by, ts),
+                "UPDATE managed_users SET status='locked', locked_at=?, ticket=?, reason=?, updated_at=? WHERE username=? AND server_id=?",
+                (ts, ticket, reason, ts, username, server_id),
             )
-            conn.commit()
-            conn.close()
-            return
-        conn.execute(
-            "UPDATE managed_users SET status='active', groups_csv=?, shell=?, ticket=?, reason=?, updated_at=? WHERE id=?",
-            (groups_csv, shell, ticket, reason, ts, existing["id"]),
-        )
-    elif action == "lock":
-        conn.execute(
-            "UPDATE managed_users SET status='locked', locked_at=?, ticket=?, reason=?, updated_at=? WHERE username=? AND server_id=?",
-            (ts, ticket, reason, ts, username, server_id),
-        )
-    elif action in ("remove", "delete", "purge"):
-        conn.execute(
-            """UPDATE managed_users SET status='removed', removed_at=?, removed_by=?, removal_type='manual',
-               updated_at=? WHERE username=? AND server_id=?""",
-            (ts, performed_by, ts, username, server_id),
-        )
-    conn.commit()
-    conn.close()
+        elif action in ("remove", "delete", "purge"):
+            conn.execute(
+                """UPDATE managed_users SET status='removed', removed_at=?, removed_by=?, removal_type='manual',
+                   updated_at=? WHERE username=? AND server_id=?""",
+                (ts, performed_by, ts, username, server_id),
+            )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def mark_removed_automatically(user_id):
     conn = get_db()
-    ts = now_iso()
-    conn.execute(
-        """UPDATE managed_users SET status='removed', removed_at=?, removed_by='system/scheduler',
-           removal_type='automatic', updated_at=? WHERE id=?""",
-        (ts, ts, user_id),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        ts = now_iso()
+        conn.execute(
+            """UPDATE managed_users SET status='removed', removed_at=?, removed_by='system/scheduler',
+               removal_type='automatic', updated_at=? WHERE id=?""",
+            (ts, ts, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def list_locked_users():
@@ -349,18 +374,20 @@ def log_action(managed_user_id, server_id, username, action, mode, status, messa
                ticket, groups_snapshot, shell_snapshot, performed_by, triggered_by,
                ansible_run_id=None, raw_stdout_ref=None):
     conn = get_db()
-    conn.execute(
-        """INSERT INTO action_log
-           (managed_user_id, server_id, username, action, mode, status, message, ticket,
-            groups_snapshot, shell_snapshot, performed_by, triggered_by, ansible_run_id,
-            raw_stdout_ref, performed_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (managed_user_id, server_id, username, action, mode, status, message, ticket,
-         groups_snapshot, shell_snapshot, performed_by, triggered_by, ansible_run_id,
-         raw_stdout_ref, now_iso()),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            """INSERT INTO action_log
+               (managed_user_id, server_id, username, action, mode, status, message, ticket,
+                groups_snapshot, shell_snapshot, performed_by, triggered_by, ansible_run_id,
+                raw_stdout_ref, performed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (managed_user_id, server_id, username, action, mode, status, message, ticket,
+             groups_snapshot, shell_snapshot, performed_by, triggered_by, ansible_run_id,
+             raw_stdout_ref, now_iso()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def list_action_log_for_user(managed_user_id):
@@ -438,13 +465,15 @@ def executions_per_server(days=30):
 
 def add_document(managed_user_id, doc_type, reference, description, uploaded_by):
     conn = get_db()
-    conn.execute(
-        """INSERT INTO documents (managed_user_id, doc_type, reference, description, uploaded_by, uploaded_at)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (managed_user_id, doc_type, reference, description, uploaded_by, now_iso()),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            """INSERT INTO documents (managed_user_id, doc_type, reference, description, uploaded_by, uploaded_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (managed_user_id, doc_type, reference, description, uploaded_by, now_iso()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def list_documents_for_user(managed_user_id):
@@ -461,13 +490,15 @@ def list_documents_for_user(managed_user_id):
 
 def save_collected_facts(managed_user_id, server_id, collection_status, history_excerpt):
     conn = get_db()
-    conn.execute(
-        """INSERT INTO collected_facts (managed_user_id, server_id, collected_at, collection_status, history_excerpt)
-           VALUES (?, ?, ?, ?, ?)""",
-        (managed_user_id, server_id, now_iso(), collection_status, history_excerpt),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            """INSERT INTO collected_facts (managed_user_id, server_id, collected_at, collection_status, history_excerpt)
+               VALUES (?, ?, ?, ?, ?)""",
+            (managed_user_id, server_id, now_iso(), collection_status, history_excerpt),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def latest_collected_facts(managed_user_id):
@@ -501,13 +532,15 @@ def try_start_scheduler_run(run_type, run_date):
 
 def finish_scheduler_run(run_type, run_date, users_checked, users_removed, status):
     conn = get_db()
-    conn.execute(
-        """UPDATE scheduler_runs SET finished_at=?, users_checked=?, users_removed=?, status=?
-           WHERE run_type=? AND run_date=?""",
-        (now_iso(), users_checked, users_removed, status, run_type, run_date),
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn.execute(
+            """UPDATE scheduler_runs SET finished_at=?, users_checked=?, users_removed=?, status=?
+               WHERE run_type=? AND run_date=?""",
+            (now_iso(), users_checked, users_removed, status, run_type, run_date),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def list_scheduler_runs(limit=30):
