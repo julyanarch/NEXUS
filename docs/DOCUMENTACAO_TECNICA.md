@@ -729,3 +729,20 @@ removida. Agora o campo aceita:
 Continua sendo **só leitura** (`stat`, nunca lista conteúdo de pasta nem baixa nada) - a decisão de
 não restringir caminho é aceitável aqui porque quem opera o NEXUS já tem acesso root a esses
 servidores por outras vias (o próprio Ansible roda como root via `become`).
+
+---
+
+## 29. Resumo da IA repetia tudo que já estava no card "Fatos"
+
+`_build_summary()` montava um parágrafo com: servidor + criação, chamado/motivo mais recente,
+situação (ativo/bloqueado com contagem/removido), permissões/grupos e últimos comandos. O problema:
+**todo esse conteúdo já aparece organizado, em campos separados, no card "Fatos" logo abaixo** (o
+mesmo servidor/criado por/criado em/chamado no `stat-row`, a mesma barra de progresso de dias
+bloqueado, o mesmo texto de permissões/grupos) - o parágrafo da IA só reescrevia tudo em prosa,
+poluindo a tela sem agregar nada. Os últimos comandos, além de redundantes com o card "Últimos
+comandos executados", tinham ficado ainda mais deslocados ali dentro de um parágrafo de resumo.
+
+**Correção:** `_build_summary()` agora é só a **síntese de situação**, uma frase: ativo, bloqueado
+(com contagem regressiva) + aviso de urgência quando aplicável, ou removido (por quem/quando/tipo).
+Todo o resto do que já está no "Fatos" (servidor, criação, permissões) e no "Últimos comandos
+executados" (comandos) não é mais repetido no resumo da IA.

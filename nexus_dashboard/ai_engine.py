@@ -10,13 +10,6 @@ facil de explicar.
 import config
 import models
 
-COMMAND_STATUS_LABELS = {
-    "ok": "coletado com sucesso (best-effort)",
-    "empty": "historico vazio ou desativado no servidor",
-    "no_access": "arquivo de historico nao encontrado para este usuario",
-    "error": "falha ao coletar o historico",
-}
-
 
 def _format_datetime(value):
     if not value:
@@ -79,51 +72,26 @@ def build_user_insights(managed_user_row):
 
 
 def _build_summary(facts):
-    parts = []
-
-    parts.append(
-        f"O usuario {facts['username']} esta cadastrado no servidor {facts['server_name']}, "
-        f"criado em {facts['created_at']} por {facts['created_by']}"
-        + (f" (chamado {facts['created_ticket']})" if facts["created_ticket"] else "") + "."
-    )
-
-    if facts["ticket"] and facts["ticket"] != facts["created_ticket"]:
-        parts.append(
-            f"Chamado/motivo da acao mais recente: {facts['ticket']}"
-            + (f" ({facts['reason']})" if facts["reason"] else "") + "."
-        )
-
+    """So a sintese de situacao, em uma frase - o resto (servidor, criacao,
+    permissoes, comandos) ja aparece organizado nos cards "Fatos" e "Ultimos
+    comandos executados" logo abaixo, repetir tudo aqui so poluia a tela."""
     if facts["status"] == "active":
-        parts.append("Situacao atual: ATIVO.")
-    elif facts["status"] == "locked":
-        parts.append(
-            f"Situacao atual: BLOQUEADO ha {facts['days_locked']} dia(s), desde {facts['locked_at']}. "
-            f"Faltam {facts['days_remaining']} dia(s) para a remocao automatica em "
-            f"{config.LOCK_MAX_DAYS} dias."
+        return f"{facts['username']} esta ativo em {facts['server_name']}."
+
+    if facts["status"] == "locked":
+        summary = (
+            f"{facts['username']} esta bloqueado ha {facts['days_locked']} dia(s) - "
+            f"restam {facts['days_remaining']} dia(s) ate a remocao automatica."
         )
         if facts["urgency"]:
-            parts.append(
-                "Atencao: a conta esta proxima do limite de bloqueio e sera removida "
-                "automaticamente pelo NEXUS se nao houver acao manual antes disso."
+            summary += (
+                " Proximo do limite: sera removido automaticamente pelo NEXUS "
+                "se nao houver acao manual antes disso."
             )
-    elif facts["status"] == "removed":
+        return summary
+
+    if facts["status"] == "removed":
         tipo = "automaticamente (expiracao de 90 dias de bloqueio)" if facts["removal_type"] == "automatic" else "manualmente"
-        parts.append(f"Situacao atual: REMOVIDO {tipo} em {facts['removed_at']} por {facts['removed_by']}.")
+        return f"{facts['username']} foi removido {tipo} em {facts['removed_at']} por {facts['removed_by']}."
 
-    if facts["groups"]:
-        parts.append(f"Permissoes/grupos: {', '.join(facts['groups'])}.")
-    else:
-        parts.append("Nenhum grupo adicional registrado (sem privilegios elevados conhecidos).")
-
-    cmd_status = facts["commands"]["status"]
-    if cmd_status == "ok" and facts["commands"]["lines"]:
-        parts.append(
-            f"Ultimos comandos conhecidos (best-effort, coletados em {facts['commands']['collected_at']}): "
-            + "; ".join(facts["commands"]["lines"][-5:]) + "."
-        )
-    else:
-        parts.append(
-            "Comandos executados: " + COMMAND_STATUS_LABELS.get(cmd_status, "sem informacao") + "."
-        )
-
-    return " ".join(parts)
+    return f"{facts['username']}."
