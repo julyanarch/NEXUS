@@ -319,3 +319,29 @@ precisar.
 - O checkbox manual "Este servidor não pede senha de sudo" continua existindo, mas só na tela de
   **editar** servidor (não mais no cadastro) — serve como ajuste manual pra quando a detecção
   automática não conseguir concluir.
+
+---
+
+## 12. Bug: "Missing sudo password" mesmo com a senha já configurada
+
+Sintoma: servidor com "senha sudo" marcada como **configurada** na tela Servidores, teste de
+conexão OK, mas uma ação real (`apply`) falha com `Task failed: Missing sudo password` na tarefa
+que roda o `nexus_sanitize_users.sh` via `become: yes`.
+
+**Causa raiz:** a senha de sudo de cada servidor é salva em
+`ansible/host_vars/<servidor>/{vars.yml, vault.yml}` (ver seção "Onde cada coisa fica"). O Ansible
+só carrega `host_vars/`/`group_vars/` **automaticamente** quando essa pasta fica ao lado do
+arquivo de inventário (`ansible/inventory/`) ou ao lado do playbook (`ansible/playbooks/`) — não é
+o caso aqui, `ansible/host_vars/` fica um nível acima de ambos. Resultado: o arquivo com a senha
+existe (por isso a tela mostra "configurada", que só checa se o arquivo existe em disco), mas o
+Ansible nunca o lê na hora de rodar a playbook, então `ansible_become_pass` nunca é definido e o
+`become` falha por falta de senha.
+
+**Correção:** os playbooks que usam `become: yes` (`sanitize_users.yml`,
+`fetch_bash_history.yml`) agora recebem a extra-var `host_vars_root` e, como primeira tarefa,
+carregam explicitamente `host_vars_root/<inventory_hostname>/` via `include_vars: {dir: ...}` —
+guardado por uma checagem `stat` (`delegate_to: localhost`) pra não quebrar em servidores
+NOPASSWD, que não têm essa pasta.
+
+**Como confirmar que passou a funcionar:** rodar a ação de novo no mesmo servidor — assim como
+outras falhas de auditoria, o registro antigo `failed` não se reescreve sozinho.

@@ -411,7 +411,7 @@ def register_routes(app):
                 action=row["action"],
                 mode=mode,
                 status=status,
-                message=result["stdout"][-2000:] if result["stdout"] else ("sucesso" if result["success"] else "falha na execucao"),
+                message=ansible_bridge.summarize_result(result),
                 ticket=row["ticket"],
                 groups_snapshot=row["groups"],
                 shell_snapshot=row["shell"],
@@ -509,7 +509,7 @@ def register_routes(app):
         models.log_action(
             managed_user_id=user_id, server_id=user["server_id"], username=user["username"],
             action="remove", mode="apply", status="ok" if result["success"] else "failed",
-            message=result["stdout"][-2000:] if result["stdout"] else "",
+            message=ansible_bridge.summarize_result(result),
             ticket=user["ticket"], groups_snapshot="", shell_snapshot="",
             performed_by=session["operator_name"], triggered_by="manual", ansible_run_id=result.get("run_id"),
         )

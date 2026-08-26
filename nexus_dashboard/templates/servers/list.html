@@ -38,29 +38,31 @@
           {% endif %}
         </td>
         <td>
-          <a class="btn btn-sm btn-outline" href="{{ url_for('edit_server', server_id=s.id) }}">editar</a>
-          <form style="display:inline" method="post" action="{{ url_for('test_server', server_id=s.id) }}">
-            <button class="btn btn-sm" type="submit">testar conexão</button>
-          </form>
-          {% if not s.sudo_nopasswd %}
-          <a class="btn btn-sm btn-outline" href="{{ url_for('server_vault', server_id=s.id) }}">senha sudo</a>
-          {% endif %}
-          <form style="display:inline" method="post" action="{{ url_for('detect_server_sudo', server_id=s.id) }}">
-            <button class="btn btn-sm btn-outline" type="submit" title="Testa de novo, via sudo -n, se esse servidor pede senha de sudo">detectar</button>
-          </form>
-          <form style="display:inline" method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
-            <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
-          </form>
-          {% if not has_history[s.id] %}
-          <form style="display:inline" method="post" action="{{ url_for('delete_server', server_id=s.id) }}"
-                data-confirm='Excluir "{{ s.name }}" definitivamente?'>
-            <button class="btn btn-sm btn-danger" type="submit">excluir</button>
-          </form>
-          {% else %}
-          <span class="muted" style="font-size:0.75rem;" title="Tem usuários/execuções registradas - use desabilitar">
-            sem exclusão (tem histórico)
-          </span>
-          {% endif %}
+          <div class="actions">
+            <a class="btn btn-sm btn-outline" href="{{ url_for('edit_server', server_id=s.id) }}">editar</a>
+            <form method="post" action="{{ url_for('test_server', server_id=s.id) }}">
+              <button class="btn btn-sm" type="submit">testar conexão</button>
+            </form>
+            {% if not s.sudo_nopasswd %}
+            <a class="btn btn-sm btn-outline" href="{{ url_for('server_vault', server_id=s.id) }}">senha sudo</a>
+            {% endif %}
+            <form method="post" action="{{ url_for('detect_server_sudo', server_id=s.id) }}">
+              <button class="btn btn-sm btn-outline" type="submit" title="Testa de novo, via sudo -n, se esse servidor pede senha de sudo">detectar</button>
+            </form>
+            <form method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
+              <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
+            </form>
+            {% if not has_history[s.id] %}
+            <form method="post" action="{{ url_for('delete_server', server_id=s.id) }}"
+                  data-confirm='Excluir "{{ s.name }}" definitivamente?'>
+              <button class="btn btn-sm btn-danger" type="submit">excluir</button>
+            </form>
+            {% else %}
+            <span class="muted" style="font-size:0.75rem;" title="Tem usuários/execuções registradas - use desabilitar">
+              sem exclusão (tem histórico)
+            </span>
+            {% endif %}
+          </div>
         </td>
       </tr>
       {% else %}

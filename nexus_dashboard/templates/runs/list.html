@@ -21,10 +21,7 @@
         <td>{{ r.performed_by }}</td>
         <td>
           {% if r.message %}
-          <details>
-            <summary>ver</summary>
-            <pre style="max-width:480px; white-space:pre-wrap;">{{ r.message }}</pre>
-          </details>
+          <span style="max-width:420px; display:inline-block; white-space:normal;">{{ r.message }}</span>
           {% else %}
           <span class="muted">-</span>
           {% endif %}

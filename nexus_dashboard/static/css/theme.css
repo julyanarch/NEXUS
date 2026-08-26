@@ -93,6 +93,14 @@ a:hover { text-decoration: underline; }
 .btn-danger:hover { background: var(--danger); }
 .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.actions form { display: inline-flex; margin: 0; }
+
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);

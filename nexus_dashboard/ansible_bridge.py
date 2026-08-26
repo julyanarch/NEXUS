@@ -115,6 +115,35 @@ def detect_sudo_nopasswd(server_name):
     return {"status": "unknown", "detail": unreachable_msg or GENERIC_DETECTION_FAILURE}
 
 
+def summarize_result(result):
+    """Mensagem curta pra coluna Detalhe de Execucoes/Painel - nunca o
+    stdout bruto do Ansible (que despeja todas as TASKs e o PLAY RECAP
+    cheios de codigos de escape ANSI, ilegivel na tela)."""
+    if result["success"]:
+        return "Executado com sucesso."
+
+    pieces = []
+    for event in result["runner"].events:
+        if event.get("event") not in ("runner_on_failed", "runner_on_unreachable"):
+            continue
+        event_data = event.get("event_data", {})
+        host = event_data.get("host") or "?"
+        task = event_data.get("task") or ""
+        res = event_data.get("res", {})
+        detail = _clean_detail(res.get("msg") or res.get("stderr") or res.get("module_stderr"))
+        label = "servidor inalcancavel" if event.get("event") == "runner_on_unreachable" else "falhou"
+        piece = f'"{task}" {label} em {host}' if task else f"{label} em {host}"
+        if detail:
+            piece += f": {detail}"
+        pieces.append(piece)
+
+    if pieces:
+        return " | ".join(pieces)
+
+    fallback = _clean_detail(result["stdout"])[-500:]
+    return fallback or f"Execucao terminou com status '{result['status']}'."
+
+
 def _write_temp_csv(rows):
     fd, path = tempfile.mkstemp(prefix="nexus_action_", suffix=".csv", dir=config.ARTIFACTS_DIR)
     with os.fdopen(fd, "w", newline="", encoding="utf-8") as f:
@@ -162,6 +191,7 @@ def run_sanitize(target_host, mode, rows, password_hashes=None):
         "sanitizer_script_local_path": LEGACY_SCRIPT_COPY,
         "csv_local_path": csv_path,
         "artifacts_local_dir": config.ARTIFACTS_DIR,
+        "host_vars_root": config.HOST_VARS_DIR,
     }
     if hashes_path:
         extravars["password_hash_local_path"] = hashes_path
@@ -181,7 +211,11 @@ def _redact_history_line(line):
 
 
 def fetch_bash_history(target_host, username, max_lines=40):
-    result = _run(PLAYBOOK_HISTORY, {"target_host": target_host, "target_username": username})
+    result = _run(PLAYBOOK_HISTORY, {
+        "target_host": target_host,
+        "target_username": username,
+        "host_vars_root": config.HOST_VARS_DIR,
+    })
 
     if not result["success"]:
         return {"status": "error", "excerpt": ""}

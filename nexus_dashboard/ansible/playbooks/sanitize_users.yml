@@ -11,6 +11,7 @@
 #   csv_local_path                caminho local do CSV com a(s) linha(s) de acao
 #   artifacts_local_dir           pasta local onde salvar o relatorio JSON coletado
 #   password_hash_local_path      (opcional) arquivo local "username:hash"
+#   host_vars_root                 pasta local com host_vars/<servidor>/{vars,vault}.yml
 
 - name: NEXUS - Sanitizar usuarios
   hosts: "{{ target_host }}"
@@ -19,6 +20,23 @@
   vars:
     has_password_hashes: "{{ password_hash_local_path is defined and password_hash_local_path | length > 0 }}"
   tasks:
+    # host_vars_root fica fora de inventory/ e de playbooks/, entao o
+    # Ansible nao o descobre sozinho - precisa ser carregado explicitamente
+    # (senao "become" falha com "Missing sudo password" mesmo com a senha
+    # ja configurada na tela "senha sudo").
+    - name: Verificar se ha senha de sudo configurada para este servidor (controller)
+      ansible.builtin.stat:
+        path: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      delegate_to: localhost
+      become: no
+      register: host_vars_stat
+      changed_when: false
+
+    - name: Carregar senha de sudo do servidor (Ansible Vault, quando configurada)
+      ansible.builtin.include_vars:
+        dir: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      when: host_vars_stat.stat.exists
+
     - name: Criar diretorio temporario protegido no servidor remoto
       ansible.builtin.shell: "umask 077; mktemp -d /tmp/nexus-dash.XXXXXX"
       register: remote_tmp
