@@ -493,10 +493,8 @@ def register_routes(app):
         insights = ai_engine.build_user_insights(user)
         timeline = models.list_action_log_for_user(user_id)
         documents = models.list_documents_for_user(user_id)
-        history_collections = models.list_collected_facts_for_user(user_id)
         return render_template(
             "users/detail.html", user=user, insights=insights, timeline=timeline, documents=documents,
-            history_collections=history_collections,
         )
 
     @app.route("/users/<int:user_id>/documents", methods=["POST"])
@@ -525,27 +523,18 @@ def register_routes(app):
         return redirect(url_for("user_detail", user_id=user_id))
 
     @app.route("/users/<int:user_id>/history/download")
-    @app.route("/users/<int:user_id>/history/download/<int:fact_id>")
-    def download_history(user_id, fact_id=None):
-        """Baixa uma coleta de historico como .txt - a mais recente por
-        padrao, ou uma coleta especifica (fact_id) escolhida na lista de
-        coletas anteriores da tela de detalhe do usuario. Cada clique em
-        "Coletar historico" gera uma coleta nova (nao apaga as antigas), entao
-        isso funciona como um jeito de "filtrar por data": nao ha como saber a
-        data de cada comando dentro do historico em si (o .bash_history do
-        Linux nao grava isso por padrao), mas da pra escolher de qual data foi
-        a coleta que se quer baixar."""
+    def download_history(user_id):
         user = models.get_user(user_id)
         if user is None:
             flash("Usuario nao encontrado.", "danger")
             return redirect(url_for("list_users"))
 
-        facts = models.get_collected_facts(fact_id, user_id) if fact_id else models.latest_collected_facts(user_id)
+        facts = models.latest_collected_facts(user_id)
         if not facts or facts["collection_status"] != "ok" or not facts["history_excerpt"]:
             flash("Nenhum historico coletado ainda para esse usuario - clique em \"Coletar historico de comandos\" primeiro.", "warning")
             return redirect(url_for("user_detail", user_id=user_id))
 
-        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", f'{user["username"]}_{user["server_name"]}_{facts["collected_at"]}')
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", f'{user["username"]}_{user["server_name"]}')
         header = (
             f'# Historico de comandos (best-effort) de "{user["username"]}" em "{user["server_name"]}"\n'
             f'# Coletado em: {facts["collected_at"]}\n'

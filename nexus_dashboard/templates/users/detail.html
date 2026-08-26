@@ -14,7 +14,7 @@
     {% if user.status != 'removed' %}
     <form style="display:inline" method="post" action="{{ url_for('force_removal', user_id=user.id) }}"
           data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?"
-          title="Executa a remocao (userdel) agora, sem esperar os {{ lock_max_days }} dias de bloqueio ate a remocao automatica.">
+          title="{% if user.status == 'locked' %}Executa a remocao (userdel) agora, sem esperar os {{ lock_max_days }} dias de bloqueio ate a remocao automatica.{% else %}Executa a remocao (userdel) agora - disponivel tambem pra usuario ativo, nao precisa bloquear primeiro.{% endif %}">
       <button class="btn btn-danger" type="submit">Forçar remoção agora</button>
     </form>
     {% endif %}
@@ -73,33 +73,12 @@
       {% else %}Histórico ainda não coletado. Use o botão "Coletar histórico de comandos".{% endif %}
     </p>
   {% endif %}
-
-  {% if history_collections|length > 1 %}
-  <details style="margin-top:14px;">
-    <summary class="muted">Coletas anteriores ({{ history_collections|length }}) — baixar por data</summary>
-    <div class="table-scroll" style="margin-top:8px;">
-    <table>
-      <thead><tr><th>Coletado em</th><th>Resultado</th><th></th></tr></thead>
-      <tbody>
-        {% for c in history_collections %}
-        <tr>
-          <td>{{ c.collected_at }}</td>
-          <td>
-            {% if c.collection_status == 'ok' %}<span class="badge badge-active">ok</span>
-            {% else %}<span class="badge badge-removed">{{ c.collection_status }}</span>{% endif %}
-          </td>
-          <td>
-            {% if c.collection_status == 'ok' and c.history_excerpt %}
-            <a href="{{ url_for('download_history', user_id=user.id, fact_id=c.id) }}">baixar .txt</a>
-            {% else %}<span class="muted">-</span>{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    </div>
-  </details>
-  {% endif %}
+  <p class="muted" style="margin-top:10px; font-size:0.82rem;">
+    Importante: o Linux só grava os comandos no arquivo <code>~/.bash_history</code> quando a sessão
+    é fechada (ou com <code>history -a</code> manual dentro dela) — comandos digitados numa sessão
+    SSH que ainda está aberta não aparecem até ela ser encerrada. Feche a sessão (ou rode
+    <code>history -a</code> nela) antes de coletar, se quiser pegar os comandos mais recentes.
+  </p>
 </div>
 
 <div class="card">

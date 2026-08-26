@@ -568,12 +568,38 @@ direto no usuário do Linux que for digitado no formulário, então funciona nor
 que já existiam no servidor antes do projeto existir (ver seção 21 sobre o registro ficar visível
 em Usuários).
 
+**Correção de uma explicação equivocada:** o botão "Forçar remoção agora" (tela de detalhe do
+usuário) não aparece só para usuário **bloqueado** - a condição no template é
+`user.status != 'removed'`, ou seja, aparece pra `active` e `locked`, só não pra quem já está
+`removed`. Faz sentido como está: dá pra remover um usuário ativo direto, sem precisar bloquear
+primeiro. O tooltip do botão foi ajustado pra não sugerir, de forma enganosa, que ele só existe
+por causa da contagem de 90 dias de bloqueio (isso só se aplica quando o usuário já está
+`locked`).
+
 **Download do histórico com "filtro de data":** como explicado na seção 20, o `.bash_history`
 bruto não grava data/hora por comando, então filtrar comandos individuais por data não é possível.
-O que foi implementado é filtrar por **data da coleta**: cada clique em "Coletar histórico de
-comandos" grava uma linha nova em `collected_facts` (não sobrescreve a anterior). Quando existe
-mais de uma coleta pra um usuário, a tela de detalhe mostra um `<details>` "Coletas anteriores"
-com a lista de todas as datas já coletadas e um link "baixar .txt" por linha
-(`models.list_collected_facts_for_user()` / rota `/users/<id>/history/download/<fact_id>`); o
-botão "Baixar .txt" no topo continua baixando sempre a mais recente
-(`/users/<id>/history/download`, sem `fact_id`).
+Chegou a ser implementada uma navegação por **data da coleta** (uma lista das coletas antigas, já
+que cada clique em "Coletar histórico" grava uma linha nova sem apagar a anterior), mas foi
+revertida a pedido - o botão "Baixar .txt" volta a baixar sempre e só a coleta mais recente
+(`/users/<id>/history/download`).
+
+---
+
+## 23. Coleta de histórico não pega comandos de sessão SSH ainda aberta
+
+Sintoma: rodar comandos manualmente via terminal SSH (propositalmente, pra testar) e, na sequência,
+clicar em "Coletar histórico de comandos" no NEXUS - nada aparece, mesmo os comandos tendo
+acabado de ser executados.
+
+**Causa:** comportamento padrão do bash, não um bug do NEXUS. O bash só grava os comandos da
+sessão atual no arquivo `~/.bash_history` **quando a sessão é fechada** (ou explicitamente via
+`history -a`) - enquanto a sessão SSH continua aberta, os comandos ficam só na memória daquele
+processo bash, não no arquivo em disco. Como o NEXUS só lê o arquivo (via `cat`/`slurp`, não tem
+acesso à memória da sessão de outra pessoa), qualquer coisa digitada numa sessão ainda aberta é
+invisível pra coleta até ela ser encerrada. Isso já era uma limitação conhecida documentada nos
+comentários do playbook (`ansible/playbooks/fetch_bash_history.yml`), mas não estava explicada em
+lugar nenhum visível na tela - só nos comentários do código, que o operador não vê.
+
+**Correção:** adicionado um aviso permanente e visível na tela de detalhe do usuário, na seção
+"Comandos executados", explicando essa limitação e a solução (fechar a sessão ou rodar
+`history -a` nela antes de coletar).
