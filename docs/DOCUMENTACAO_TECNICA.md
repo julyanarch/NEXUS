@@ -1058,3 +1058,28 @@ interativo) e `/usr/sbin/nologin` (sem acesso interativo). O backend valida o va
 essa lista - se vier algo fora dela (formulário adulterado, JS não rodou), usa o primeiro item da
 lista (`/bin/bash`) como padrão, em vez de confiar cegamente no que o form manda (mesma lógica já
 aplicada em outros campos, ex.: a senha proibida da seção 38).
+
+---
+
+## 44. Desalinhamento entre Grupos e Shell (correção de layout)
+
+Depois da seção 43, Grupos e Shell apareciam em linhas diferentes do formulário (Grupos mais acima,
+Shell mais abaixo) - os dois dividiam o mesmo `.form-grid` dos 4 campos de cima (Nome/Chamado/Ação/
+Motivo), e dependendo de quantas colunas cabiam na tela, podiam quebrar em linhas diferentes um do
+outro.
+
+**Correção:** Grupos e Shell foram movidos pra um `.form-grid` próprio (`create_only_fields`),
+separado do grid de cima - assim os dois sempre caem juntos na mesma linha, alinhados, não importa
+a largura da tela.
+
+---
+
+## 45. Data de bloqueio e remoção na lista de Usuários (auditoria)
+
+Filtrando por usuários **Bloqueados** ou **Removidos**, a tabela mostrava só "Criado em" - sem a
+data em que o usuário foi bloqueado ou removido, informação necessária pra auditoria.
+
+**Correção:** adicionadas as colunas "Bloqueado em" e "Removido em" (mostram "-" quando não se
+aplica) na lista de Usuários. Não precisou de mudança no backend - a consulta (`USER_LIST_QUERY`)
+já trazia `locked_at`/`removed_at` (colunas que já existiam em `managed_users` desde o início), só
+não apareciam na tela.
