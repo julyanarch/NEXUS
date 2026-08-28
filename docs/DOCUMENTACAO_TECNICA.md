@@ -1161,3 +1161,29 @@ classe irmã com seu próprio `grid-template-columns`, que foi a causa do desali
 tentativa, seção 18/47) - como é literalmente o mesmo `grid-template-columns` (herdado da classe
 compartilhada), a legenda fica garantida de cair exatamente nas mesmas colunas dos botões, linha
 por linha.
+
+---
+
+## 50. Bug crítico: cadastro de servidor aceitava usuário SSH que não existe
+
+Achado em teste real: excluiu um servidor (`asc-lnx-lab-01`) e recadastrou usando um usuário SSH
+que não existe de propósito, só pra testar - o cadastro foi aceito normalmente ("Servidor
+cadastrado."), e só depois, ao clicar em "testar conexão" manualmente, é que apareceu "falhou".
+
+**Causa raiz:** `new_server()` só gravava os dados do formulário no banco - nunca tentava conectar
+de verdade antes de considerar o cadastro válido. Como toda ação do NEXUS depende de SSH
+funcionando (Ansible), um servidor cadastrado com usuário inexistente (ou chave SSH não autorizada,
+ou host/porta errados) fica "fantasma": aparece na lista, mas nenhuma ação nele vai funcionar
+nunca, e olhando a lista de Servidores não fica óbvio o motivo - só descobre quem for conferir o
+badge "Último teste" manualmente.
+
+**Correção:** ao cadastrar (`POST /servers/new`), depois de salvar e reconstruir o inventário, o
+NEXUS agora testa a conexão na hora (mesmo mecanismo do botão "testar conexão",
+`ansible_bridge.test_connection`) **antes** de confirmar o cadastro pro operador. Se falhar, o
+registro recém-criado é apagado (`models.delete_server` - seguro aqui porque um servidor que acabou
+de ser criado nunca tem histórico ainda) e a tela volta pro formulário com uma mensagem explicando
+que não foi possível conectar com aquele usuário/host, junto com o detalhe técnico do erro (útil pra
+diferenciar "usuário não existe" de "host inalcançável" ou "chave não autorizada"). Isso vale só
+para o cadastro novo - editar um servidor já existente não passou a exigir esse teste (não foi
+pedido, e bloquear a edição de metadados por uma indisponibilidade temporária de rede seria
+indesejável).

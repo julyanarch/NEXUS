@@ -334,14 +334,34 @@ def register_routes(app):
         if request.method == "POST":
             ssh_host = request.form["ssh_host"].strip()
             name = request.form["name"].strip()
+            ssh_user = request.form["ssh_user"].strip()
             server_id = models.create_server(
                 name,
                 ssh_host,
-                request.form["ssh_user"].strip(),
+                ssh_user,
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
             )
             inventory_builder.rebuild_inventory()
+
+            # Cadastra e testa a conexao na hora - se o usuario SSH informado
+            # nao existe no servidor (ou a chave publica do NEXUS nao foi
+            # autorizada pra ele, ou o host/porta estao errados), desfaz o
+            # cadastro em vez de deixar um servidor "fantasma" que nunca vai
+            # funcionar (nenhuma acao roda sem SSH funcionando).
+            test_result = ansible_bridge.test_connection(name)
+            if not test_result["success"]:
+                models.delete_server(server_id)
+                inventory_builder.rebuild_inventory()
+                flash(
+                    f'Não foi possível conectar como "{ssh_user}" em {ssh_host}. Confirme que '
+                    f'esse usuário já existe no servidor (crie-o lá antes, se necessário) e que '
+                    'a chave SSH pública do NEXUS está autorizada para ele. Detalhe: '
+                    f'{ansible_bridge.summarize_result(test_result)}',
+                    "danger",
+                )
+                return redirect(url_for("new_server"))
+
             flash("Servidor cadastrado.", "success")
             _warn_duplicate_host(ssh_host)
             _detect_and_apply_sudo_nopasswd(server_id, name)
