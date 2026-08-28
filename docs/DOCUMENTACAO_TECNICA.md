@@ -1201,3 +1201,16 @@ host/usuário já aparecem na frase principal da mensagem.
 acrescenta (`Failed to connect to the host via ssh: user@host: `). Mensagem final: `Não foi
 possível conectar como "X" em Y. Confirme que o usuário existe no servidor e que a chave SSH do
 NEXUS está autorizada para ele. (Permission denied (publickey,password).)`.
+
+---
+
+## 52. Logo do NEXUS
+
+A aplicação não tinha nenhuma logo/ícone - só o texto "NEXUS." na barra lateral, e nenhum favicon
+na aba do navegador.
+
+**Criado:** `static/img/logo.svg` - um ícone de "hub" (nó central conectado a 6 nós ao redor),
+representando visualmente o conceito de nexus/ponto de conexão, nas cores roxas já usadas no resto
+do tema (`--purple`/`--purple-dark` do `theme.css`). Usado em dois lugares: ao lado do texto
+"NEXUS." na barra lateral (`.brand-row`, novo) e como favicon (`<link rel="icon">` em
+`base.html` - não existia nenhum antes).
