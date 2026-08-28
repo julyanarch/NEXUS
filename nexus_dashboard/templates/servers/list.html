@@ -6,6 +6,47 @@
 </div>
 
 <div class="card">
+  <form method="get" class="form-grid" style="align-items:end;">
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" name="name" value="{{ filters.name or '' }}" placeholder="ex.: douglas">
+    </div>
+    <div class="form-group">
+      <label>Habilitado</label>
+      <select name="enabled" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        <option value="yes" {{ 'selected' if filters.enabled == 'yes' }}>sim</option>
+        <option value="no" {{ 'selected' if filters.enabled == 'no' }}>não</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Último teste</label>
+      <select name="last_test_status" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        <option value="ok" {{ 'selected' if filters.last_test_status == 'ok' }}>ok</option>
+        <option value="falhou" {{ 'selected' if filters.last_test_status == 'falhou' }}>falhou</option>
+        <option value="never" {{ 'selected' if filters.last_test_status == 'never' }}>nunca testado</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Senha sudo</label>
+      <select name="sudo_status" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        <option value="nopasswd" {{ 'selected' if filters.sudo_status == 'nopasswd' }}>não necessária</option>
+        <option value="configured" {{ 'selected' if filters.sudo_status == 'configured' }}>configurada</option>
+        <option value="pending" {{ 'selected' if filters.sudo_status == 'pending' }}>pendente</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex-direction:row; gap:8px;">
+      <button class="btn" type="submit">Filtrar</button>
+      {% if filters.values() | select | list %}
+      <a class="btn btn-outline" href="{{ url_for('list_servers') }}">Limpar</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="card">
   <div class="table-scroll">
   <table>
     <thead>
@@ -84,7 +125,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="8" class="muted">Nenhum servidor cadastrado.</td></tr>
+      <tr><td colspan="8" class="muted">Nenhum servidor encontrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>

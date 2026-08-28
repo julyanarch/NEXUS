@@ -222,11 +222,41 @@ def register_routes(app):
 
     @app.route("/servers")
     def list_servers():
+        filters = {
+            "name": request.args.get("name") or None,
+            "enabled": request.args.get("enabled") or None,
+            "last_test_status": request.args.get("last_test_status") or None,
+            "sudo_status": request.args.get("sudo_status") or None,
+        }
         servers = models.list_servers()
         vault_status = {s["id"]: config.server_vault_configured(s["name"]) for s in servers}
         has_history = {s["id"]: models.server_has_history(s["id"]) for s in servers}
+
+        def sudo_status_for(s):
+            if s["sudo_nopasswd"]:
+                return "nopasswd"
+            return "configured" if vault_status[s["id"]] else "pending"
+
+        # Servidores e uma lista pequena (poucas dezenas no maximo) - filtra
+        # em memoria mesmo, sem necessidade de mudar a query/paginar como em
+        # Execucoes (essa sim pode crescer bastante).
+        if filters["name"]:
+            needle = filters["name"].strip().lower()
+            servers = [s for s in servers if needle in s["name"].lower()]
+        if filters["enabled"]:
+            want_enabled = filters["enabled"] == "yes"
+            servers = [s for s in servers if bool(s["enabled"]) == want_enabled]
+        if filters["last_test_status"]:
+            if filters["last_test_status"] == "never":
+                servers = [s for s in servers if not s["last_test_status"]]
+            else:
+                servers = [s for s in servers if s["last_test_status"] == filters["last_test_status"]]
+        if filters["sudo_status"]:
+            servers = [s for s in servers if sudo_status_for(s) == filters["sudo_status"]]
+
         return render_template(
             "servers/list.html", servers=servers, vault_status=vault_status, has_history=has_history,
+            filters=filters,
         )
 
     def _sudo_nopasswd_from_form():

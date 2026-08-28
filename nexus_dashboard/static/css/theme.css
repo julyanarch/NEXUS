@@ -135,12 +135,15 @@ a:hover { text-decoration: underline; }
  */
 .actions {
   display: grid;
-  grid-template-columns: 44px 84px 72px 62px 76px 56px;
-  gap: 4px;
+  /* Largura de cada coluna calculada pro texto real do botao (nao so a
+     legenda abreviada) nao estourar, sem cortar/espremer: editar, testar
+     conexao, senha sudo, detectar, habilitar/desabilitar, excluir. */
+  grid-template-columns: 68px 112px 92px 80px 96px 76px;
+  gap: 8px;
   align-items: center;
 }
 .actions form { display: contents; }
-.actions .btn, .actions .muted { width: 100%; text-align: center; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
+.actions .btn, .actions .muted { width: 100%; text-align: center; white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 
 /* Legenda em cima do grid de botoes (cabecalho "Acoes") - usa o mesmo
    grid-template-columns, entao cada legenda fica alinhada com seu botao. */
@@ -149,7 +152,7 @@ a:hover { text-decoration: underline; }
   cursor: help;
 }
 .actions-caption span {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 400;
   text-transform: none;
   color: var(--text-muted);
