@@ -27,14 +27,17 @@
         <input type="text" name="reason" placeholder="ex.: admissao, afastamento, desligamento">
       </div>
       <div class="form-group">
-        <label>Grupos (separados por ;)</label>
-        <input type="text" name="groups" placeholder="ex.: sudo;docker">
+        <label>Grupos</label>
+        <div class="checkbox-list">
+          <label><input type="checkbox" name="groups" value="sudo"> sudo</label>
+          <label><input type="checkbox" name="groups" value="docker"> docker</label>
+        </div>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="shell_group">
         <label>Shell</label>
         <input type="text" name="shell" value="/bin/bash">
       </div>
-      <div class="form-group">
+      <div class="form-group" id="home_group">
         <label>Home (yes cria/apaga, no mantém)</label>
         <select name="home">
           <option value="yes">yes</option>

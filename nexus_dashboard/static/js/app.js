@@ -63,4 +63,22 @@ document.addEventListener("DOMContentLoaded", function () {
     actionSelect.addEventListener("change", togglePasswordGroup);
     togglePasswordGroup();
   }
+
+  // Shell e Home nao fazem sentido para remover/purgar: a propria acao ja diz
+  // se a home fica ou e apagada, entao esconde os dois pra ninguem mexer neles
+  // manualmente (o backend tambem ignora/forca esses valores nesses casos).
+  var shellGroup = document.getElementById("shell_group");
+  var homeGroup = document.getElementById("home_group");
+  function toggleShellHomeGroups() {
+    if (!actionSelect || !shellGroup || !homeGroup) return;
+    var hide = actionSelect.value === "remove" || actionSelect.value === "purge";
+    shellGroup.style.display = hide ? "none" : "block";
+    homeGroup.style.display = hide ? "none" : "block";
+    shellGroup.querySelectorAll("input, select").forEach(function (el) { el.disabled = hide; });
+    homeGroup.querySelectorAll("input, select").forEach(function (el) { el.disabled = hide; });
+  }
+  if (actionSelect) {
+    actionSelect.addEventListener("change", toggleShellHomeGroups);
+    toggleShellHomeGroups();
+  }
 });

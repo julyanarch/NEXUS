@@ -439,13 +439,23 @@ def register_routes(app):
         return render_template("actions/new.html", servers=models.list_servers())
 
     def _collect_action_form():
+        action = request.form.get("action", "").strip().lower()
+        # 'remove' e 'purge' ja dizem no proprio nome da acao se a home fica ou
+        # e apagada - o campo Home do formulario e ignorado (fica escondido na
+        # tela) pra nao contradizer o rotulo da acao escolhida.
+        if action == "remove":
+            home = "no"
+        elif action == "purge":
+            home = "yes"
+        else:
+            home = request.form.get("home", "yes")
         return {
             "username": request.form.get("username", "").strip(),
-            "action": request.form.get("action", "").strip().lower(),
-            "home": request.form.get("home", "yes"),
+            "action": action,
+            "home": home,
             "reason": request.form.get("reason", "").strip(),
             "ticket": request.form.get("ticket", "").strip(),
-            "groups": request.form.get("groups", "").strip(),
+            "groups": ";".join(request.form.getlist("groups")),
             "shell": request.form.get("shell", "").strip() or "/bin/bash",
         }
 
