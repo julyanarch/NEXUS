@@ -1,5 +1,6 @@
 import base64
 import csv
+import json
 import os
 import re
 import shutil
@@ -176,6 +177,26 @@ def _write_temp_password_hashes(password_hashes):
     return path
 
 
+def _read_sanitize_report(target_host):
+    """Le o relatorio JSON que o sanitizer gerou nessa execucao (results[0],
+    ja que o dashboard sempre manda 1 usuario por vez) - e o que diz se a
+    acao realmente aconteceu (status "ok"), foi ignorada porque o usuario
+    nao existe/ja existe ("skipped"), foi barrada por ser usuario protegido
+    ("blocked") ou falhou de verdade ("failed"). O script sempre termina com
+    exit code 0 mesmo quando ignora ou barra uma linha (e um processador de
+    CSV em lote, feito pra nao abortar o resto por causa de uma linha) -
+    entao o rc/status do Ansible sozinho nao basta pra saber se a acao
+    pedida aconteceu de fato."""
+    report_path = os.path.join(config.ARTIFACTS_DIR, f"{target_host}_sanitize.json")
+    try:
+        with open(report_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return None
+    results = data.get("results") or []
+    return results[0] if results else None
+
+
 def run_sanitize(target_host, mode, rows, password_hashes=None):
     """Executa o nexus_sanitize_users.sh reaproveitado via Ansible.
 
@@ -183,6 +204,10 @@ def run_sanitize(target_host, mode, rows, password_hashes=None):
     mode: "dry-run" ou "apply"
     rows: lista de dicts com username/action/home/reason/ticket/groups/shell
     password_hashes: dict opcional {username: hash_sha512_crypt}
+
+    O dict retornado inclui "row_status"/"row_message" com o resultado real
+    da linha processada (ok/skipped/blocked/failed - ver _read_sanitize_report),
+    alem de "success" (se a execucao via Ansible em si rodou sem erro).
     """
     sync_legacy_script()
     csv_path = _write_temp_csv(rows)
@@ -200,11 +225,16 @@ def run_sanitize(target_host, mode, rows, password_hashes=None):
         extravars["password_hash_local_path"] = hashes_path
 
     try:
-        return _run(PLAYBOOK_SANITIZE, extravars)
+        result = _run(PLAYBOOK_SANITIZE, extravars)
     finally:
         for path in (csv_path, hashes_path):
             if path and os.path.exists(path):
                 os.remove(path)
+
+    row = _read_sanitize_report(target_host) if result["success"] else None
+    result["row_status"] = row.get("status") if row else None
+    result["row_message"] = row.get("message") if row else None
+    return result
 
 
 def _redact_history_line(line):

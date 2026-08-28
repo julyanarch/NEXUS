@@ -982,3 +982,49 @@ se o operador escolhesse "Remover, mantém home" sem mexer manualmente nesse cam
   virou um `<select>` só com as opções válidas: nenhum, sudo, docker, ou sudo e docker - no mesmo
   padrão visual do campo Ação. (Chegou a passar por uma versão com checkboxes, mas voltou pra
   select porque ficava desalinhado com os outros campos do formulário.)
+
+---
+
+## 41. Bug crítico: ação "aplicada com sucesso" em usuário que não existe no servidor
+
+Testando remover/purgar um usuário inventado (que não existia em nenhum servidor), o dashboard
+mostrou "Ação aplicada com sucesso" e criou um registro de usuário `removed` pra ele em todos os
+servidores selecionados - como se a remoção tivesse realmente acontecido.
+
+**Causa raiz:** o `nexus_sanitize_users.sh` é feito pra processar um CSV em lote sem abortar por
+causa de uma linha problemática - por isso ele **sempre termina com exit code 0**, mesmo quando uma
+linha é ignorada (`skipped`, ex.: "usuario nao existe no servidor" / "usuario ja existe no
+servidor"), barrada (`blocked`, usuário protegido) ou falha de verdade (`failed`, ex.: grupo/shell
+inválido). O resultado real de cada linha vai pra um relatório JSON
+(`/var/log/nexus/nexus_sanitize_users_*.json`), que o playbook já buscava e copiava pro controller
+(`{host}_sanitize.json`) - **mas o `app.py` nunca lia esse arquivo**. Ele só checava se o Ansible
+tinha rodado sem erro (`result["success"]`), e como o script sempre sai com 0, toda execução
+(inclusive as ignoradas) era tratada como sucesso e gravava o usuário como removido no banco local.
+
+Isso não afetava só "usuário inexistente" - **qualquer** linha `skipped`/`blocked`/`failed` do
+script (usuário protegido, grupo inválido, shell inválido, usuário que já existe numa criação) caía
+no mesmo problema. Inclusive o esquema do banco (`action_log.status`) já previa os quatro valores
+(`ok`/`skipped`/`blocked`/`failed`) e o filtro de status em Execuções já tinha as quatro opções na
+tela - só faltava o `app.py` de fato ler e usar esse dado.
+
+**Correção:**
+- `ansible_bridge.run_sanitize()` agora lê o relatório JSON depois de cada execução e devolve o
+  status real da linha processada (`row_status`/`row_message`), além do `success` (que continua
+  significando só "o Ansible rodou sem erro").
+- `app.py` (`_run_action`, usado por Simular e Aplicar) e `force_removal` (botão "Forçar remoção
+  agora") passaram a decidir com base nesse `row_status`: só grava o usuário como criado/removido
+  no banco quando o status realmente for `ok`; quando é `skipped`/`blocked`/`failed`, grava esse
+  status de verdade no log de execução e mostra a mensagem real (ex.: "thierry: usuario nao existe
+  no servidor") na tela, em vez de "sucesso".
+- `scheduler.py` (remoção automática após 90 dias bloqueado) recebeu a mesma correção - antes,
+  se o usuário já tivesse sido removido manualmente do servidor por fora do NEXUS, o job diário
+  também marcaria a remoção automática como concluída com sucesso sem ela ter de fato acontecido.
+
+**Registros já criados por esse bug:** os usuários fantasma criados antes dessa correção (ex.:
+`tkshfkjsapfas` no teste que encontrou o bug) continuam no banco e precisam ser limpos manualmente
+- não há tela no dashboard pra isso ainda. Direto no servidor onde o dashboard roda:
+```
+sqlite3 nexus_dashboard/db/nexus.db "DELETE FROM action_log WHERE username='tkshfkjsapfas'; DELETE FROM managed_users WHERE username='tkshfkjsapfas';"
+```
+(troque o username antes de rodar; `action_log` precisa ser apagado primeiro por causa da chave
+estrangeira pra `managed_users`).

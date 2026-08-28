@@ -498,17 +498,34 @@ def register_routes(app):
 
         operator = session["operator_name"]
         overall_ok = True
+        problems = []
 
         for server_id in server_ids:
             server = models.get_server(server_id)
             result = ansible_bridge.run_sanitize(
                 target_host=server["name"], mode=mode, rows=[row], password_hashes=password_hashes,
             )
-            status = "ok" if result["success"] else "failed"
-            overall_ok = overall_ok and result["success"]
+            # "success" so diz que o Ansible rodou sem erro - o sanitizer processa
+            # CSV em lote e sempre termina com exit 0, mesmo ignorando (usuario
+            # nao existe/ja existe) ou barrando (usuario protegido) uma linha. O
+            # status real da linha vem do relatorio JSON (row_status).
+            if not result["success"]:
+                row_status = "failed"
+                row_message = ansible_bridge.summarize_result(result)
+            elif result["row_status"] is None:
+                row_status = "failed"
+                row_message = "Nao foi possivel ler o resultado da execucao."
+            else:
+                row_status = result["row_status"]
+                row_message = result["row_message"] or ansible_bridge.summarize_result(result)
+
+            row_ok = row_status == "ok"
+            overall_ok = overall_ok and row_ok
+            if not row_ok:
+                problems.append(f'{server["name"]}: {row_message}')
 
             managed_user_id = None
-            if mode == "apply" and result["success"]:
+            if mode == "apply" and row_ok:
                 models.upsert_user_after_action(
                     row["username"], server_id, row["action"], row["groups"], row["shell"],
                     row["home"], row["ticket"], row["reason"], operator,
@@ -525,8 +542,8 @@ def register_routes(app):
                 username=row["username"],
                 action=row["action"],
                 mode=mode,
-                status=status,
-                message=ansible_bridge.summarize_result(result),
+                status=row_status,
+                message=row_message,
                 ticket=row["ticket"],
                 groups_snapshot=row["groups"],
                 shell_snapshot=row["shell"],
@@ -535,12 +552,14 @@ def register_routes(app):
                 ansible_run_id=result.get("run_id"),
             )
 
-        if mode == "dry-run":
-            flash("Simulacao concluida. Veja o resultado em /runs." if overall_ok else "Simulacao encontrou falhas.",
-                  "success" if overall_ok else "danger")
+        if overall_ok:
+            if mode == "dry-run":
+                flash("Simulacao concluida. Veja o resultado em /runs.", "success")
+            else:
+                flash("Acao aplicada com sucesso.", "success")
         else:
-            flash("Acao aplicada com sucesso." if overall_ok else "Acao aplicada com falhas em um ou mais servidores.",
-                  "success" if overall_ok else "danger")
+            action_word = "Simulacao" if mode == "dry-run" else "Acao"
+            flash(f"{action_word} nao foi aplicada em um ou mais servidores: " + " | ".join(problems), "danger")
         return redirect(url_for("list_users"))
 
     @app.route("/actions/new/dry-run", methods=["POST"])
@@ -673,19 +692,29 @@ def register_routes(app):
                    "reason": "remocao manual antecipada", "ticket": user["ticket"] or "",
                    "groups": "", "shell": ""}],
         )
-        if result["success"]:
+        if not result["success"]:
+            row_status = "failed"
+            row_message = ansible_bridge.summarize_result(result)
+        elif result["row_status"] is None:
+            row_status = "failed"
+            row_message = "Nao foi possivel ler o resultado da execucao."
+        else:
+            row_status = result["row_status"]
+            row_message = result["row_message"] or ansible_bridge.summarize_result(result)
+        row_ok = row_status == "ok"
+
+        if row_ok:
             models.upsert_user_after_action(
                 user["username"], user["server_id"], "remove", "", "", "no",
                 user["ticket"], "remocao manual antecipada", session["operator_name"],
             )
         models.log_action(
             managed_user_id=user_id, server_id=user["server_id"], username=user["username"],
-            action="remove", mode="apply", status="ok" if result["success"] else "failed",
-            message=ansible_bridge.summarize_result(result),
+            action="remove", mode="apply", status=row_status, message=row_message,
             ticket=user["ticket"], groups_snapshot="", shell_snapshot="",
             performed_by=session["operator_name"], triggered_by="manual", ansible_run_id=result.get("run_id"),
         )
-        flash("Remocao executada." if result["success"] else "Falha ao remover.", "success" if result["success"] else "danger")
+        flash("Remocao executada." if row_ok else f"Falha ao remover: {row_message}", "success" if row_ok else "danger")
         return redirect(url_for("user_detail", user_id=user_id))
 
     # ---------------------------------------------------------------- runs --

@@ -50,16 +50,21 @@ def run_lock_expiry_check():
             }],
         )
 
-        if result["success"]:
+        # "success" so diz que o Ansible rodou sem erro - o sanitizer sempre
+        # termina com exit 0 mesmo ignorando uma linha (ex.: usuario ja nao
+        # existe mais no servidor). O status real vem do relatorio JSON.
+        row_status = result["row_status"] if result["success"] else None
+        if row_status == "ok":
             models.mark_removed_automatically(user["id"])
             users_removed += 1
             status = "ok"
             message = f"Removido automaticamente apos {days_locked} dias de bloqueio."
         else:
-            status = "failed"
+            status = row_status or "failed"
+            detail = result["row_message"] if row_status else ansible_bridge.summarize_result(result)
             message = (
-                f"Falha ao tentar remocao automatica apos {days_locked} dias de bloqueio; "
-                "usuario permanece bloqueado e sera retentado no proximo ciclo."
+                f"Remocao automatica apos {days_locked} dias de bloqueio nao concluida "
+                f"({detail}); usuario permanece bloqueado e sera retentado no proximo ciclo."
             )
 
         models.log_action(
