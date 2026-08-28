@@ -929,3 +929,56 @@ seção 35) pra trazer os usuários - rodar o cadastro de novo não é necessár
 uma importação sob demanda (automática no cadastro, manual depois) - não é uma sincronização
 contínua/ao vivo (ex.: via WebSocket) refletindo mudanças feitas diretamente no servidor segundo a
 segundo. Pra pegar usuários criados depois da última importação, rode o botão manual de novo.
+
+---
+
+## 38. Senha temporária padrão da equipe passa a ser proibida
+
+A equipe tinha o hábito informal de sempre usar a mesma senha (`Br@$torag3`) como senha temporária
+na criação de usuário - na prática ela virava a senha "de fato" de vários usuários, já que a troca
+obrigatória no primeiro login nem sempre acontecia de verdade.
+
+**Correção:** `config.TEMP_PASSWORD_BANNED` guarda essa senha, e `app.py` recusa aplicar a ação de
+criação/adição se `temp_password` for exatamente igual a ela ("Essa senha temporaria e proibida.
+Use outra."). A checagem é **só no backend**, de propósito: se ficasse também no HTML/JS do
+formulário, a senha banida apareceria em texto plano no código-fonte da página, visível pra
+qualquer um que inspecionasse - o bloqueio no servidor é o que realmente impede o uso, sem expor a
+senha em lugar nenhum do front. Não foi adicionada nenhuma dica visual embaixo do campo revelando
+qual senha é proibida.
+
+---
+
+## 39. Selecionar todos os servidores de destino de uma vez
+
+Na tela "Nova Ação", marcar servidor por servidor era repetitivo quando a ação era pra rodar em
+todos ao mesmo tempo.
+
+**Correção:** checkbox "Selecionar todos" acima da lista de servidores (só aparece se houver
+servidor cadastrado). Marca/desmarca todos os servidores **habilitados** de uma vez - servidores
+desabilitados ficam de fora, já que o checkbox deles já vem bloqueado. O estado do "Selecionar
+todos" também se ajusta sozinho se o usuário marcar os servidores manualmente (inclusive fica
+"indeterminado" quando só parte está marcada), e continua disparando a exibição do campo de
+confirmação em massa (`bulk_confirmation_group`) quando aplicável.
+
+---
+
+## 40. Formulário "Nova Ação": Grupos, Shell e Home só aparecem quando fazem sentido
+
+Os campos Grupos, Shell e Home ficavam sempre visíveis, mesmo quando a ação escolhida não os usava
+- o próprio script (`nexus_sanitize_users.sh`) só lê esses três campos na ação **Criar**; em
+Bloquear/Remover/Purgar eles são ignorados. Isso gerava confusão (por que digitar um shell pra
+remover um usuário?) e, pior, um bug real: o campo Home vinha com `yes` selecionado por padrão, e
+se o operador escolhesse "Remover, mantém home" sem mexer manualmente nesse campo, o sistema
+**apagava a home mesmo assim** - contradizendo o próprio rótulo da ação.
+
+**Correção:**
+- Os três campos (Grupos, Shell, Home) agora só aparecem no formulário quando a Ação selecionada é
+  "Criar" - escondidos (e desabilitados, pra não serem enviados) nos outros casos.
+- No backend, `_collect_action_form()` também passou a **forçar** o valor de Home pela ação
+  escolhida, independente do que viesse no formulário: `remove` sempre manda `home=no` (mantém
+  home, como o rótulo promete) e `purge` sempre manda `home=yes`. Isso corrige o bug mesmo se o
+  JavaScript não rodar por algum motivo.
+- Grupos deixou de ser texto livre (risco de erro de digitação, ex. "sudoo" ao invés de "sudo") e
+  virou um `<select>` só com as opções válidas: nenhum, sudo, docker, ou sudo e docker - no mesmo
+  padrão visual do campo Ação. (Chegou a passar por uma versão com checkboxes, mas voltou pra
+  select porque ficava desalinhado com os outros campos do formulário.)
