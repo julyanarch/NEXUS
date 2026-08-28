@@ -25,7 +25,12 @@
     <thead>
       <tr>
         <th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th>
-        <th class="actions-header" title="editar dados do servidor | testar se a conexão SSH funciona | configurar a senha de sudo desse servidor | testar de novo se esse servidor pede senha de sudo (sudo -n) | habilitar/desabilitar o servidor | excluir">Ações</th>
+        <th class="actions-header" title="editar dados do servidor | testar se a conexão SSH funciona | configurar a senha de sudo desse servidor | testar de novo se esse servidor pede senha de sudo (sudo -n) | habilitar/desabilitar o servidor | excluir">
+          Ações
+          <div class="actions actions-caption">
+            <span>editar</span><span>conexão</span><span>sudo</span><span>detecta sudo</span><span>ativação</span><span>excluir</span>
+          </div>
+        </th>
       </tr>
       <tr class="filter-row">
         <th><input type="text" name="name" form="servers-filter-form" value="{{ filters.name or '' }}" placeholder="nome"></th>
