@@ -26,7 +26,10 @@
         <label>Motivo</label>
         <input type="text" name="reason" placeholder="ex.: admissao, afastamento, desligamento">
       </div>
-      <div class="form-group" id="groups_group">
+    </div>
+
+    <div class="form-grid" id="create_only_fields">
+      <div class="form-group">
         <label>Grupos</label>
         <select name="groups">
           <option value="">nenhum</option>
@@ -35,7 +38,7 @@
           <option value="sudo;docker">sudo e docker</option>
         </select>
       </div>
-      <div class="form-group" id="shell_group">
+      <div class="form-group">
         <label>Shell</label>
         <select name="shell">
           {% for value, label in available_shells %}

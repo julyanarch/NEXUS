@@ -67,17 +67,15 @@ document.addEventListener("DOMContentLoaded", function () {
   // Grupos e Shell so fazem sentido na criacao do usuario - em bloquear/
   // remover/purgar esses campos sao ignorados pelo script, entao esconde
   // pra ninguem mexer a toa. (Home saiu do formulario: e sempre "yes" na
-  // criacao, fixo no backend - as outras acoes nem usam esse campo.)
-  var fieldsOnlyForCreate = ["groups_group", "shell_group"]
-    .map(function (id) { return document.getElementById(id); })
-    .filter(Boolean);
+  // criacao, fixo no backend - as outras acoes nem usam esse campo.) Os dois
+  // ficam no proprio ".form-grid" (create_only_fields), separado do grid de
+  // cima, pra sempre cairem juntos na mesma linha, alinhados.
+  var createOnlyFields = document.getElementById("create_only_fields");
   function toggleCreateOnlyFields() {
-    if (!actionSelect || !fieldsOnlyForCreate.length) return;
+    if (!actionSelect || !createOnlyFields) return;
     var show = actionSelect.value === "create" || actionSelect.value === "add";
-    fieldsOnlyForCreate.forEach(function (group) {
-      group.style.display = show ? "block" : "none";
-      group.querySelectorAll("input, select").forEach(function (el) { el.disabled = !show; });
-    });
+    createOnlyFields.style.display = show ? "grid" : "none";
+    createOnlyFields.querySelectorAll("input, select").forEach(function (el) { el.disabled = !show; });
   }
   if (actionSelect) {
     actionSelect.addEventListener("change", toggleCreateOnlyFields);
