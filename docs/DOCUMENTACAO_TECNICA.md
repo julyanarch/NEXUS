@@ -1187,3 +1187,17 @@ diferenciar "usuário não existe" de "host inalcançável" ou "chave não autor
 para o cadastro novo - editar um servidor já existente não passou a exigir esse teste (não foi
 pedido, e bloquear a edição de metadados por uma indisponibilidade temporária de rede seria
 indesejável).
+
+---
+
+## 51. Mensagem de erro de conexão (seção 50) longa demais
+
+A mensagem de falha (seção 50) usava `summarize_result()`, que inclui o nome da task entre aspas e
+"servidor inalcancavel em X" - informação útil pra Execuções, mas repetitiva aqui, já que
+host/usuário já aparecem na frase principal da mensagem.
+
+**Correção:** `ansible_bridge.connection_failure_reason()` extrai só a razão real do erro SSH (ex.:
+`Permission denied (publickey,password).`), removendo o prefixo padrão que o Ansible sempre
+acrescenta (`Failed to connect to the host via ssh: user@host: `). Mensagem final: `Não foi
+possível conectar como "X" em Y. Confirme que o usuário existe no servidor e que a chave SSH do
+NEXUS está autorizada para ele. (Permission denied (publickey,password).)`.
