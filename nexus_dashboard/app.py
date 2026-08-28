@@ -22,6 +22,7 @@ def create_app():
     app = Flask(__name__)
     app.secret_key = config.SECRET_KEY
     app.jinja_env.filters["clean_server_name"] = models.display_server_name
+    app.jinja_env.filters["format_datetime"] = models.format_datetime
 
     os.makedirs(os.path.dirname(config.DB_PATH), exist_ok=True)
     os.makedirs(config.ARTIFACTS_DIR, exist_ok=True)

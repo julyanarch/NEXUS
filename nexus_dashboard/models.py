@@ -10,6 +10,18 @@ def now_iso():
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+def format_datetime(value):
+    """Formato curto (dd/mm/aaaa hh:mm) pra exibicao nas telas - os campos
+    *_at ficam guardados como ISO 8601 completo (com segundos e fuso, ex.:
+    '2026-08-25T14:22:46-03:00'), o que deixa as tabelas largas demais."""
+    if not value:
+        return "-"
+    try:
+        return datetime.fromisoformat(value).strftime("%d/%m/%Y %H:%M")
+    except ValueError:
+        return value
+
+
 # managed_users.created_by e NOT NULL - usado quando a primeira acao que o
 # NEXUS registra pra um usuario e "lock"/"remove"/"purge" (nao "create"), ou
 # seja, o usuario ja existia no servidor antes de ser gerido por aqui. Ver

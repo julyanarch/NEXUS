@@ -51,10 +51,10 @@
           {{ u.days_locked }}
           {% else %}-{% endif %}
         </td>
-        <td>{{ u.locked_at or '-' }}</td>
-        <td>{{ u.removed_at or '-' }}</td>
+        <td>{{ u.locked_at | format_datetime }}</td>
+        <td>{{ u.removed_at | format_datetime }}</td>
         <td>{{ u.ticket or '-' }}</td>
-        <td>{{ u.created_at }}</td>
+        <td>{{ u.created_at | format_datetime }}</td>
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">detalhes / IA</a></td>
       </tr>
       {% else %}
