@@ -354,10 +354,9 @@ def register_routes(app):
                 models.delete_server(server_id)
                 inventory_builder.rebuild_inventory()
                 flash(
-                    f'Não foi possível conectar como "{ssh_user}" em {ssh_host}. Confirme que '
-                    f'esse usuário já existe no servidor (crie-o lá antes, se necessário) e que '
-                    'a chave SSH pública do NEXUS está autorizada para ele. Detalhe: '
-                    f'{ansible_bridge.summarize_result(test_result)}',
+                    f'Não foi possível conectar como "{ssh_user}" em {ssh_host}. Confirme que o '
+                    'usuário existe no servidor e que a chave SSH do NEXUS está autorizada para '
+                    f'ele. ({ansible_bridge.connection_failure_reason(test_result)})',
                     "danger",
                 )
                 return redirect(url_for("new_server"))

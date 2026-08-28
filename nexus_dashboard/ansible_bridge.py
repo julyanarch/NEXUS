@@ -148,6 +148,25 @@ def summarize_result(result):
     return fallback or f"Execucao terminou com status '{result['status']}'."
 
 
+_SSH_CONNECT_PREFIX_RE = re.compile(r"^(Task failed: )?Failed to connect to the host via ssh: \S+: ")
+
+
+def connection_failure_reason(result):
+    """Versao enxuta do motivo da falha, pra mensagem de erro num formulario
+    (ex.: cadastro de servidor) - so a razao real (ex.: 'Permission denied
+    (publickey,password).'), sem o nome da task nem o 'servidor inalcancavel
+    em X' que summarize_result() inclui (bom pra Execucoes, verboso demais
+    aqui, ja que o host/usuario ja aparecem na frase principal da mensagem)."""
+    for event in result["runner"].events:
+        if event.get("event") != "runner_on_unreachable":
+            continue
+        res = event.get("event_data", {}).get("res", {})
+        detail = _clean_detail(res.get("msg") or res.get("stderr"))
+        if detail:
+            return _SSH_CONNECT_PREFIX_RE.sub("", detail)
+    return summarize_result(result)
+
+
 def _write_temp_csv(rows):
     fd, path = tempfile.mkstemp(prefix="nexus_action_", suffix=".csv", dir=config.ARTIFACTS_DIR)
     with os.fdopen(fd, "w", newline="", encoding="utf-8") as f:
