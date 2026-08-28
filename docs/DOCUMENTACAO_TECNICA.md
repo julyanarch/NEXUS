@@ -1146,3 +1146,18 @@ sudo/ativação/excluir) foi removida - ela duplicava o texto real dos botões c
 (ex.: botão diz "testar conexão", legenda dizia só "conexão"), o que por si só já causava a
 sensação de desalinhamento. O cabeçalho agora é só "Ações" centralizado (com o mesmo tooltip
 explicando cada botão), e o grid de botões ganhou `justify-content: center`.
+
+---
+
+## 49. Legenda dos botões de Ações volta, agora sem desalinhar
+
+A legenda acima dos botões (seção 48) fez falta - o botão "detectar" só explicava o que faz via
+tooltip no hover, não era explícito o suficiente pra quem não passa o mouse. Pedido: trazer de
+volta uma legenda curta, sem virar descrição longa e sem voltar a desalinhar.
+
+**Correção:** a legenda (`editar` / `conexão` / `sudo` / `detecta sudo` / `ativação` / `excluir`)
+volta acima dos botões, mas reaproveitando a **mesma classe `.actions`** dos botões reais (não uma
+classe irmã com seu próprio `grid-template-columns`, que foi a causa do desalinhamento na primeira
+tentativa, seção 18/47) - como é literalmente o mesmo `grid-template-columns` (herdado da classe
+compartilhada), a legenda fica garantida de cair exatamente nas mesmas colunas dos botões, linha
+por linha.
