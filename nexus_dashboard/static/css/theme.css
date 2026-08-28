@@ -135,31 +135,20 @@ a:hover { text-decoration: underline; }
  */
 .actions {
   display: grid;
-  /* Largura de cada coluna calculada pro texto real do botao (nao so a
-     legenda abreviada) nao estourar, sem cortar/espremer: editar, testar
-     conexao, senha sudo, detectar, habilitar/desabilitar, excluir. */
+  /* Largura de cada coluna calculada pro texto real do botao nao estourar,
+     sem cortar/espremer: editar, testar conexao, senha sudo, detectar,
+     habilitar/desabilitar, excluir. */
   grid-template-columns: 68px 112px 92px 80px 96px 76px;
   gap: 8px;
   align-items: center;
+  justify-content: center;
 }
 .actions form { display: contents; }
 .actions .btn, .actions .muted { width: 100%; text-align: center; white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 
-/* Legenda em cima do grid de botoes (cabecalho "Acoes") - usa o mesmo
-   grid-template-columns, entao cada legenda fica alinhada com seu botao. */
-.actions-caption {
-  margin-top: 4px;
-  cursor: help;
-}
-.actions-caption span {
-  font-size: 0.72rem;
-  font-weight: 400;
-  text-transform: none;
-  color: var(--text-muted);
-  text-align: center;
-  white-space: normal;
-  line-height: 1.2;
-}
+/* Cabecalho "Acoes" (lista de Servidores) - centralizado, ja que a coluna e
+   bem mais larga que a palavra "Acoes" sozinha (grid de botoes embaixo). */
+.actions-header { text-align: center; cursor: help; }
 
 .table-scroll { overflow-x: auto; max-width: 100%; }
 

@@ -2,49 +2,22 @@
 {% block content %}
 <div class="page-header">
   <h1>Servidores</h1>
-  <a class="btn" href="{{ url_for('new_server') }}">+ Novo servidor</a>
+  <div>
+    {% if filters.values() | select | list %}
+    <a class="btn btn-sm btn-outline" href="{{ url_for('list_servers') }}">Limpar filtros</a>
+    {% endif %}
+    <a class="btn" href="{{ url_for('new_server') }}">+ Novo servidor</a>
+  </div>
 </div>
 
-<div class="card">
-  <form method="get" class="form-grid" style="align-items:end;">
-    <div class="form-group">
-      <label>Nome</label>
-      <input type="text" name="name" value="{{ filters.name or '' }}" placeholder="ex.: douglas">
-    </div>
-    <div class="form-group">
-      <label>Habilitado</label>
-      <select name="enabled" onchange="this.form.submit()">
-        <option value="">Todos</option>
-        <option value="yes" {{ 'selected' if filters.enabled == 'yes' }}>sim</option>
-        <option value="no" {{ 'selected' if filters.enabled == 'no' }}>não</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Último teste</label>
-      <select name="last_test_status" onchange="this.form.submit()">
-        <option value="">Todos</option>
-        <option value="ok" {{ 'selected' if filters.last_test_status == 'ok' }}>ok</option>
-        <option value="falhou" {{ 'selected' if filters.last_test_status == 'falhou' }}>falhou</option>
-        <option value="never" {{ 'selected' if filters.last_test_status == 'never' }}>nunca testado</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Senha sudo</label>
-      <select name="sudo_status" onchange="this.form.submit()">
-        <option value="">Todos</option>
-        <option value="nopasswd" {{ 'selected' if filters.sudo_status == 'nopasswd' }}>não necessária</option>
-        <option value="configured" {{ 'selected' if filters.sudo_status == 'configured' }}>configurada</option>
-        <option value="pending" {{ 'selected' if filters.sudo_status == 'pending' }}>pendente</option>
-      </select>
-    </div>
-    <div class="form-group" style="flex-direction:row; gap:8px;">
-      <button class="btn" type="submit">Filtrar</button>
-      {% if filters.values() | select | list %}
-      <a class="btn btn-outline" href="{{ url_for('list_servers') }}">Limpar</a>
-      {% endif %}
-    </div>
-  </form>
-</div>
+<!-- Formulario de filtro "vazio" - os campos ficam dentro do cabecalho da
+     tabela abaixo e se associam a ele via atributo form="servers-filter-form"
+     (HTML5), em vez de envolver a tabela toda. Cada linha da tabela ja tem
+     varios <form> de acao (testar/detectar/habilitar/excluir); um <form> de
+     filtro envolvendo tudo geraria formulario aninhado - HTML invalido, o
+     navegador ignora a tag <form> interna e os botoes de acao parariam de
+     funcionar (submeteriam o filtro em vez de chamar a acao certa). -->
+<form method="get" id="servers-filter-form"></form>
 
 <div class="card">
   <div class="table-scroll">
@@ -52,12 +25,37 @@
     <thead>
       <tr>
         <th>Nome</th><th>Usuário SSH</th><th>Host</th><th>Porta</th><th>Habilitado</th><th>Último teste</th><th>Senha sudo</th>
+        <th class="actions-header" title="editar dados do servidor | testar se a conexão SSH funciona | configurar a senha de sudo desse servidor | testar de novo se esse servidor pede senha de sudo (sudo -n) | habilitar/desabilitar o servidor | excluir">Ações</th>
+      </tr>
+      <tr class="filter-row">
+        <th><input type="text" name="name" form="servers-filter-form" value="{{ filters.name or '' }}" placeholder="nome"></th>
+        <th></th>
+        <th></th>
+        <th></th>
         <th>
-          Ações
-          <div class="actions actions-caption" title="editar dados do servidor | testar se a conexão SSH funciona | configurar a senha de sudo desse servidor | testar de novo se esse servidor pede senha de sudo (sudo -n) | habilitar/desabilitar o servidor | excluir">
-            <span>editar</span><span>conexão</span><span>sudo</span><span>detectar sudo</span><span>ativação</span><span>excluir</span>
-          </div>
+          <select name="enabled" form="servers-filter-form" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="yes" {{ 'selected' if filters.enabled == 'yes' }}>sim</option>
+            <option value="no" {{ 'selected' if filters.enabled == 'no' }}>não</option>
+          </select>
         </th>
+        <th>
+          <select name="last_test_status" form="servers-filter-form" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="ok" {{ 'selected' if filters.last_test_status == 'ok' }}>ok</option>
+            <option value="falhou" {{ 'selected' if filters.last_test_status == 'falhou' }}>falhou</option>
+            <option value="never" {{ 'selected' if filters.last_test_status == 'never' }}>nunca testado</option>
+          </select>
+        </th>
+        <th>
+          <select name="sudo_status" form="servers-filter-form" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            <option value="nopasswd" {{ 'selected' if filters.sudo_status == 'nopasswd' }}>não necessária</option>
+            <option value="configured" {{ 'selected' if filters.sudo_status == 'configured' }}>configurada</option>
+            <option value="pending" {{ 'selected' if filters.sudo_status == 'pending' }}>pendente</option>
+          </select>
+        </th>
+        <th><button class="btn btn-sm" type="submit" form="servers-filter-form">Filtrar</button></th>
       </tr>
     </thead>
     <tbody>
