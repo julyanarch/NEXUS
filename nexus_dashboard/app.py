@@ -477,6 +477,9 @@ def register_routes(app):
             if not password or password != confirmation:
                 flash("Senha temporaria vazia ou nao confere com a confirmacao.", "danger")
                 return redirect(url_for("new_action_form"))
+            if password == config.TEMP_PASSWORD_BANNED:
+                flash("Essa senha temporaria e proibida. Use outra.", "danger")
+                return redirect(url_for("new_action_form"))
             weak_points = temp_password_errors(password)
             if weak_points:
                 flash("Senha temporaria fraca - falta: " + ", ".join(weak_points) + ".", "danger")

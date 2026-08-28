@@ -34,6 +34,24 @@ document.addEventListener("DOMContentLoaded", function () {
   serverChecks.forEach(function (el) { el.addEventListener("change", toggleBulkField); });
   toggleBulkField();
 
+  // Selecionar todos os servidores de destino de uma vez (pula os desabilitados).
+  var selectAllServers = document.getElementById("select_all_servers");
+  var selectableServerChecks = document.querySelectorAll(".js-server-check:not(:disabled)");
+  function syncSelectAllState() {
+    if (!selectAllServers || !selectableServerChecks.length) return;
+    var checkedCount = document.querySelectorAll(".js-server-check:not(:disabled):checked").length;
+    selectAllServers.checked = checkedCount === selectableServerChecks.length;
+    selectAllServers.indeterminate = checkedCount > 0 && checkedCount < selectableServerChecks.length;
+  }
+  if (selectAllServers) {
+    selectAllServers.addEventListener("change", function () {
+      selectableServerChecks.forEach(function (el) { el.checked = selectAllServers.checked; });
+      toggleBulkField();
+    });
+    selectableServerChecks.forEach(function (el) { el.addEventListener("change", syncSelectAllState); });
+    syncSelectAllState();
+  }
+
   var actionSelect = document.getElementById("action_select");
   var passwordGroup = document.getElementById("password_group");
   function togglePasswordGroup() {

@@ -43,6 +43,10 @@ LOCK_WARNING_DAYS = 80
 # primeiro login, via chage -d 0 no proprio nexus_sanitize_users.sh).
 TEMP_PASSWORD_MIN_LENGTH = 10
 
+# Senha padrao usada informalmente pela equipe - proibida como temporaria
+# porque vira senha "de fato" para varios usuarios (nunca e trocada de verdade).
+TEMP_PASSWORD_BANNED = "Br@$torag3"
+
 # Cores dos graficos do Painel. Status (good/warning/critical) sao valores
 # fixos, validados para contraste >=3:1 contra o fundo dos cards (#1b1229) -
 # nao mudam com o tema. "neutral" e um cinza deliberado (sem carga de status)

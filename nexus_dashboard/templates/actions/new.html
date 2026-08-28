@@ -64,6 +64,12 @@
 
     <div class="form-group">
       <label>Servidores de destino</label>
+      {% if servers %}
+      <label class="js-select-all-label">
+        <input type="checkbox" id="select_all_servers">
+        Selecionar todos
+      </label>
+      {% endif %}
       <div class="checkbox-list">
         {% for s in servers %}
         <label>
