@@ -1083,3 +1083,22 @@ data em que o usuário foi bloqueado ou removido, informação necessária pra a
 aplica) na lista de Usuários. Não precisou de mudança no backend - a consulta (`USER_LIST_QUERY`)
 já trazia `locked_at`/`removed_at` (colunas que já existiam em `managed_users` desde o início), só
 não apareciam na tela.
+
+---
+
+## 46. Datas muito longas alargando as tabelas - formato curto em toda a aplicação
+
+Todo campo de data (`created_at`, `locked_at`, `removed_at`, `performed_at`, etc.) é guardado como
+ISO 8601 completo, com segundos e fuso (ex.: `2026-08-25T14:22:46-03:00` - ver `models.now_iso()`)
+e era exibido cru em toda tela. Isso alargava as tabelas o suficiente pra empurrar colunas
+importantes (ex.: "detalhes / IA" na lista de Usuários) pra fora da área visível, exigindo rolar
+pro lado.
+
+**Correção:** criado o filtro Jinja `format_datetime` (`models.format_datetime`, registrado em
+`app.py`), que encurta pra `dd/mm/aaaa hh:mm` - sem segundos nem fuso, granularidade de minuto já
+basta pra auditoria. Aplicado em toda tela que mostrava data crua: lista de Usuários (seção 45),
+Painel ("Execuções recentes"), Execuções, lista de Servidores ("último teste") e detalhe do usuário
+(timeline de ações). O card "Fatos"/"Removido em"/"Coletado em" e o resumo da IA no detalhe do
+usuário já passavam por um formatador próprio em `ai_engine.py` (só trocava "T" por espaço, mantendo
+segundos/fuso) - esse formatador agora delega pra `models.format_datetime`, então até a frase do
+resumo da IA ("removido manualmente em ... por ...") ganhou a data curta.
