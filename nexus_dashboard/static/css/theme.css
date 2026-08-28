@@ -58,18 +58,19 @@ a:hover { text-decoration: underline; }
     gap: 4px 14px;
     padding: 12px 16px;
   }
-  .brand, .brand-sub { margin-bottom: 0; }
+  .brand-row, .brand-sub { margin-bottom: 0; }
   .brand-sub { display: none; }
   .nav-link { margin-bottom: 0; padding: 6px 10px; }
   .operator-box { margin-top: 0; margin-left: auto; }
   .main { padding: 18px !important; }
 }
 
+.brand-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.brand-logo { width: 28px; height: 28px; flex-shrink: 0; }
 .brand {
   font-size: 1.3rem;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 4px;
 }
 .brand span { color: var(--purple); }
 .brand-sub { color: var(--text-muted); font-size: 0.75rem; margin-bottom: 24px; }

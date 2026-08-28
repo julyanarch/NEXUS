@@ -4,12 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NEXUS · Gestão de Usuários{% block title %}{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <div class="brand">NEXUS<span>.</span></div>
+      <div class="brand-row">
+        <img class="brand-logo" src="{{ url_for('static', filename='img/logo.svg') }}" alt="">
+        <div class="brand">NEXUS<span>.</span></div>
+      </div>
       <div class="brand-sub">Gestão de Usuários</div>
 
       <a class="nav-link {{ 'active' if request.path == '/' }}" href="{{ url_for('dashboard') }}">Painel</a>

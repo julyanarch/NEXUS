@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="NEXUS">
+  <defs>
+    <radialGradient id="hub" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#c4b5fd"/>
+      <stop offset="45%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#5b21b6"/>
+    </radialGradient>
+  </defs>
+
+  <!-- conexoes do "nexus" - hub central ligado a 6 nos ao redor -->
+  <g stroke="#8b5cf6" stroke-width="2.4" stroke-linecap="round" opacity="0.85">
+    <line x1="32" y1="32" x2="32" y2="8"/>
+    <line x1="32" y1="32" x2="53" y2="20"/>
+    <line x1="32" y1="32" x2="53" y2="45"/>
+    <line x1="32" y1="32" x2="32" y2="57"/>
+    <line x1="32" y1="32" x2="11" y2="45"/>
+    <line x1="32" y1="32" x2="11" y2="20"/>
+  </g>
+
+  <!-- nos externos -->
+  <g fill="#c4b5fd">
+    <circle cx="32" cy="8"  r="4.2"/>
+    <circle cx="53" cy="20" r="4.2"/>
+    <circle cx="53" cy="45" r="4.2"/>
+    <circle cx="32" cy="57" r="4.2"/>
+    <circle cx="11" cy="45" r="4.2"/>
+    <circle cx="11" cy="20" r="4.2"/>
+  </g>
+
+  <!-- hub central -->
+  <circle cx="32" cy="32" r="11" fill="url(#hub)" stroke="#2a0a4a" stroke-width="1.5"/>
+</svg>
