@@ -117,7 +117,7 @@
       <strong>{{ t.action }}</strong> ({{ t.mode }}) —
       <span class="badge badge-{{ 'active' if t.status == 'ok' else 'danger' }}">{{ t.status }}</span>
       <span class="badge badge-{{ t.triggered_by }}">{{ 'automático' if t.triggered_by == 'automatic' else 'manual' }}</span>
-      <div class="muted">{{ t.performed_at }} · por {{ t.performed_by }}</div>
+      <div class="muted">{{ t.performed_at | format_datetime }} · por {{ t.performed_by }}</div>
       {% if t.message %}<div class="muted">{{ t.message[:300] }}</div>{% endif %}
     </li>
     {% else %}

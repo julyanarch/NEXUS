@@ -138,7 +138,7 @@
     <tbody>
       {% for r in recent_runs %}
       <tr>
-        <td>{{ r.performed_at }}</td>
+        <td>{{ r.performed_at | format_datetime }}</td>
         <td>{{ (r.server_name | clean_server_name) or '-' }}</td>
         <td>{{ r.username }}</td>
         <td>{{ r.action }}</td>

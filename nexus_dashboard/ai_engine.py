@@ -14,7 +14,7 @@ import models
 def _format_datetime(value):
     if not value:
         return None
-    return value.replace("T", " ")
+    return models.format_datetime(value)
 
 
 def build_user_insights(managed_user_row):

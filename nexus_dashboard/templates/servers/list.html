@@ -32,7 +32,7 @@
         <td>
           {% if s.last_test_status %}
             <span class="badge {{ 'badge-active' if s.last_test_status == 'ok' else 'badge-danger' }}">{{ s.last_test_status }}</span>
-            <div class="muted" style="font-size:0.75rem;">{{ s.last_test_at }}</div>
+            <div class="muted" style="font-size:0.75rem;">{{ s.last_test_at | format_datetime }}</div>
           {% else %}
             <span class="muted">nunca testado</span>
           {% endif %}
