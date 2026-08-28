@@ -35,6 +35,14 @@
           <option value="sudo;docker">sudo e docker</option>
         </select>
       </div>
+      <div class="form-group" id="shell_group">
+        <label>Shell</label>
+        <select name="shell">
+          {% for value, label in available_shells %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
     <div id="password_group" class="form-grid" style="display:none;">

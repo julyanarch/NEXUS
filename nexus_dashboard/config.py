@@ -47,6 +47,13 @@ TEMP_PASSWORD_MIN_LENGTH = 10
 # porque vira senha "de fato" para varios usuarios (nunca e trocada de verdade).
 TEMP_PASSWORD_BANNED = "Br@$torag3"
 
+# Shells selecionaveis na criacao de usuario - o primeiro item e o padrao
+# (pre-selecionado no formulario e usado se o valor enviado nao for um destes).
+AVAILABLE_SHELLS = [
+    ("/bin/bash", "/bin/bash (padrao, acesso interativo)"),
+    ("/usr/sbin/nologin", "/usr/sbin/nologin (sem acesso interativo - conta de servico)"),
+]
+
 # Cores dos graficos do Painel. Status (good/warning/critical) sao valores
 # fixos, validados para contraste >=3:1 contra o fundo dos cards (#1b1229) -
 # nao mudam com o tema. "neutral" e um cinza deliberado (sem carga de status)

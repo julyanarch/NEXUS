@@ -113,6 +113,7 @@ def register_routes(app):
             "temp_password_min_length": config.TEMP_PASSWORD_MIN_LENGTH,
             "not_created_via_nexus": models.NOT_CREATED_VIA_NEXUS,
             "discover_min_uid": config.DISCOVER_MIN_UID,
+            "available_shells": config.AVAILABLE_SHELLS,
         }
 
     # --------------------------------------------------------------- home --
@@ -441,10 +442,13 @@ def register_routes(app):
     def _collect_action_form():
         action = request.form.get("action", "").strip().lower()
         # Cada acao ja sabe sozinha se a home fica ou e apagada - nao ha mais
-        # campo Home/Shell no formulario (so faziam sentido em "Criar", onde
-        # sao sempre "cria a home" e /bin/bash; as outras acoes nem usam
-        # esses campos).
+        # campo Home no formulario (so fazia sentido em "Criar", onde e sempre
+        # "cria a home"; as outras acoes nem usam esse campo).
         home = "no" if action == "remove" else "yes"
+        allowed_shells = {value for value, _label in config.AVAILABLE_SHELLS}
+        shell = request.form.get("shell", "").strip()
+        if shell not in allowed_shells:
+            shell = config.AVAILABLE_SHELLS[0][0]
         return {
             "username": request.form.get("username", "").strip(),
             "action": action,
@@ -452,7 +456,7 @@ def register_routes(app):
             "reason": request.form.get("reason", "").strip(),
             "ticket": request.form.get("ticket", "").strip(),
             "groups": ";".join(request.form.getlist("groups")),
-            "shell": "/bin/bash",
+            "shell": shell,
         }
 
     def _selected_server_ids():

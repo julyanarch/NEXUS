@@ -1043,3 +1043,18 @@ removidos). No backend, `_collect_action_form()` fixa os dois direto: `shell` é
 e `home` é `"yes"` pra toda ação exceto `remove` (que continua `"no"`, mantendo a home, como o
 próprio nome da ação diz) - `purge` também usa `"yes"` porque o `useradd -m` da criação e o
 `userdel -r` do purge/lock nem olham pra esse valor fora da criação mesmo (ver seção 40).
+
+---
+
+## 43. Shell volta ao formulário como select, com opção de conta sem login
+
+Depois da seção 42, veio a pergunta: faz sentido ter mais de um shell pra escolher na criação? Sim -
+existe um caso real além do funcionário comum: conta técnica/de serviço, que não deve ter login
+interativo.
+
+**Correção:** Shell volta a aparecer no formulário (só em "Criar", mesmo padrão do Grupos), agora
+como `<select>` com duas opções fixas em `config.AVAILABLE_SHELLS`: `/bin/bash` (padrão, acesso
+interativo) e `/usr/sbin/nologin` (sem acesso interativo). O backend valida o valor recebido contra
+essa lista - se vier algo fora dela (formulário adulterado, JS não rodou), usa o primeiro item da
+lista (`/bin/bash`) como padrão, em vez de confiar cegamente no que o form manda (mesma lógica já
+aplicada em outros campos, ex.: a senha proibida da seção 38).
