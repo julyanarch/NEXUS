@@ -1102,3 +1102,24 @@ Painel ("Execuções recentes"), Execuções, lista de Servidores ("último test
 usuário já passavam por um formatador próprio em `ai_engine.py` (só trocava "T" por espaço, mantendo
 segundos/fuso) - esse formatador agora delega pra `models.format_datetime`, então até a frase do
 resumo da IA ("removido manualmente em ... por ...") ganhou a data curta.
+
+---
+
+## 47. Botões de Ações espremidos e sem filtro na lista de Servidores
+
+A seção 14 explica por que o grid de botões de Ações usa colunas de largura fixa (alinhamento
+entre linhas) e a seção 18 acrescentou uma legenda abreviada acima de cada botão. O problema: as
+larguras de coluna (44px/84px/72px/62px/76px/56px) foram dimensionadas pra legenda abreviada, não
+pro texto real do botão ("testar conexão", "habilitar"/"desabilitar", etc.), que é mais longo -
+resultado: texto cortado/espremido, e a legenda em 0.62rem estava pequena demais pra ler.
+
+**Correção:** colunas alargadas (68px/112px/92px/80px/96px/76px) pro texto real do botão caber sem
+cortar, gap maior (4px → 8px) e legenda em fonte maior (0.62rem → 0.72rem).
+
+Também foram adicionados filtros (Nome, Habilitado, Último teste, Senha sudo) acima da tabela, num
+card separado - **não** dentro do cabeçalho da tabela como em Execuções, porque cada linha de
+Servidores já tem vários `<form>` de ação (testar/detectar/habilitar/excluir); um `<form>` de
+filtro envolvendo a tabela toda geraria formulário aninhado (HTML inválido - o navegador fecha o
+form errado e quebra os botões de ação). O filtro roda em memória sobre a lista já carregada
+(poucas dezenas de servidores no máximo), sem precisar mudar a consulta nem paginar como em
+Execuções.
