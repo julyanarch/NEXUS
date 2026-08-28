@@ -440,15 +440,11 @@ def register_routes(app):
 
     def _collect_action_form():
         action = request.form.get("action", "").strip().lower()
-        # 'remove' e 'purge' ja dizem no proprio nome da acao se a home fica ou
-        # e apagada - o campo Home do formulario e ignorado (fica escondido na
-        # tela) pra nao contradizer o rotulo da acao escolhida.
-        if action == "remove":
-            home = "no"
-        elif action == "purge":
-            home = "yes"
-        else:
-            home = request.form.get("home", "yes")
+        # Cada acao ja sabe sozinha se a home fica ou e apagada - nao ha mais
+        # campo Home/Shell no formulario (so faziam sentido em "Criar", onde
+        # sao sempre "cria a home" e /bin/bash; as outras acoes nem usam
+        # esses campos).
+        home = "no" if action == "remove" else "yes"
         return {
             "username": request.form.get("username", "").strip(),
             "action": action,
@@ -456,7 +452,7 @@ def register_routes(app):
             "reason": request.form.get("reason", "").strip(),
             "ticket": request.form.get("ticket", "").strip(),
             "groups": ";".join(request.form.getlist("groups")),
-            "shell": request.form.get("shell", "").strip() or "/bin/bash",
+            "shell": "/bin/bash",
         }
 
     def _selected_server_ids():

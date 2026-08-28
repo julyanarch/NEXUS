@@ -1028,3 +1028,18 @@ sqlite3 nexus_dashboard/db/nexus.db "DELETE FROM action_log WHERE username='tksh
 ```
 (troque o username antes de rodar; `action_log` precisa ser apagado primeiro por causa da chave
 estrangeira pra `managed_users`).
+
+---
+
+## 42. Shell e Home saem de vez do formulário - fixos pra criação
+
+Seguindo a seção 40 (Shell/Home só apareciam em "Criar"), a pergunta seguinte foi: já que só existe
+um valor sensato pros dois nesse fluxo (admissão de funcionário), por que ainda ter os campos? Home
+sempre precisa ser "yes" (cria a home - sem ela o usuário não consegue logar de verdade) e Shell
+sempre `/bin/bash`.
+
+**Correção:** os dois campos saíram do formulário (não é mais "esconder conforme a ação" - foram
+removidos). No backend, `_collect_action_form()` fixa os dois direto: `shell` é sempre `/bin/bash`,
+e `home` é `"yes"` pra toda ação exceto `remove` (que continua `"no"`, mantendo a home, como o
+próprio nome da ação diz) - `purge` também usa `"yes"` porque o `useradd -m` da criação e o
+`userdel -r` do purge/lock nem olham pra esse valor fora da criação mesmo (ver seção 40).

@@ -64,10 +64,11 @@ document.addEventListener("DOMContentLoaded", function () {
     togglePasswordGroup();
   }
 
-  // Grupos, Shell e Home so fazem sentido na criacao do usuario - em
-  // bloquear/remover/purgar esses campos sao ignorados pelo script, entao
-  // esconde os tres pra ninguem mexer neles a toa.
-  var fieldsOnlyForCreate = ["groups_group", "shell_group", "home_group"]
+  // Grupos so faz sentido na criacao do usuario - em bloquear/remover/purgar
+  // esse campo e ignorado pelo script, entao esconde pra ninguem mexer a toa.
+  // (Shell e Home saíram do formulário: pra Criar já são sempre /bin/bash e
+  // yes, fixos no backend; as outras ações nem usam esses campos.)
+  var fieldsOnlyForCreate = ["groups_group"]
     .map(function (id) { return document.getElementById(id); })
     .filter(Boolean);
   function toggleCreateOnlyFields() {
