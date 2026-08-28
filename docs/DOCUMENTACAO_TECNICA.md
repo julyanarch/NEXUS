@@ -1123,3 +1123,26 @@ filtro envolvendo a tabela toda geraria formulário aninhado (HTML inválido - o
 form errado e quebra os botões de ação). O filtro roda em memória sobre a lista já carregada
 (poucas dezenas de servidores no máximo), sem precisar mudar a consulta nem paginar como em
 Execuções.
+
+---
+
+## 48. Filtros pro cabeçalho da tabela e remoção da legenda de Ações
+
+Depois da seção 47, dois ajustes: os filtros deveriam ficar dentro do próprio cabeçalho da tabela
+(uma linha abaixo dos títulos das colunas, igual em Execuções) - não num card separado acima. E o
+título "Ações" com a legenda abreviada acima dos botões (seção 18) continuava parecendo
+descentralizado.
+
+**Filtros no cabeçalho:** o obstáculo da seção 47 (não dá pra envolver a tabela toda num `<form>`
+de filtro, porque cada linha já tem vários `<form>` de ação) foi resolvido com o atributo HTML5
+`form="servers-filter-form"`: um `<form id="servers-filter-form">` vazio fica fora da tabela (não
+a envolve), e cada campo de filtro (`input`/`select`/botão "Filtrar") se associa a ele por esse
+atributo, em vez de precisar ser descendente do `<form>` no DOM. Resultado: filtros na linha logo
+abaixo dos títulos das colunas (`tr.filter-row`, mesmo padrão de Execuções), sem quebrar os botões
+de ação de cada linha.
+
+**Ações centralizado:** a legenda abreviada acima dos botões (editar/conexão/sudo/detectar
+sudo/ativação/excluir) foi removida - ela duplicava o texto real dos botões com palavras diferentes
+(ex.: botão diz "testar conexão", legenda dizia só "conexão"), o que por si só já causava a
+sensação de desalinhamento. O cabeçalho agora é só "Ações" centralizado (com o mesmo tooltip
+explicando cada botão), e o grid de botões ganhou `justify-content: center`.
