@@ -26,12 +26,14 @@
         <label>Motivo</label>
         <input type="text" name="reason" placeholder="ex.: admissao, afastamento, desligamento">
       </div>
-      <div class="form-group">
+      <div class="form-group" id="groups_group">
         <label>Grupos</label>
-        <div class="checkbox-list">
-          <label><input type="checkbox" name="groups" value="sudo"> sudo</label>
-          <label><input type="checkbox" name="groups" value="docker"> docker</label>
-        </div>
+        <select name="groups">
+          <option value="">nenhum</option>
+          <option value="sudo">sudo</option>
+          <option value="docker">docker</option>
+          <option value="sudo;docker">sudo e docker</option>
+        </select>
       </div>
       <div class="form-group" id="shell_group">
         <label>Shell</label>

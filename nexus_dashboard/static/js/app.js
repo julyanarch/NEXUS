@@ -64,21 +64,22 @@ document.addEventListener("DOMContentLoaded", function () {
     togglePasswordGroup();
   }
 
-  // Shell e Home nao fazem sentido para remover/purgar: a propria acao ja diz
-  // se a home fica ou e apagada, entao esconde os dois pra ninguem mexer neles
-  // manualmente (o backend tambem ignora/forca esses valores nesses casos).
-  var shellGroup = document.getElementById("shell_group");
-  var homeGroup = document.getElementById("home_group");
-  function toggleShellHomeGroups() {
-    if (!actionSelect || !shellGroup || !homeGroup) return;
-    var hide = actionSelect.value === "remove" || actionSelect.value === "purge";
-    shellGroup.style.display = hide ? "none" : "block";
-    homeGroup.style.display = hide ? "none" : "block";
-    shellGroup.querySelectorAll("input, select").forEach(function (el) { el.disabled = hide; });
-    homeGroup.querySelectorAll("input, select").forEach(function (el) { el.disabled = hide; });
+  // Grupos, Shell e Home so fazem sentido na criacao do usuario - em
+  // bloquear/remover/purgar esses campos sao ignorados pelo script, entao
+  // esconde os tres pra ninguem mexer neles a toa.
+  var fieldsOnlyForCreate = ["groups_group", "shell_group", "home_group"]
+    .map(function (id) { return document.getElementById(id); })
+    .filter(Boolean);
+  function toggleCreateOnlyFields() {
+    if (!actionSelect || !fieldsOnlyForCreate.length) return;
+    var show = actionSelect.value === "create" || actionSelect.value === "add";
+    fieldsOnlyForCreate.forEach(function (group) {
+      group.style.display = show ? "block" : "none";
+      group.querySelectorAll("input, select").forEach(function (el) { el.disabled = !show; });
+    });
   }
   if (actionSelect) {
-    actionSelect.addEventListener("change", toggleShellHomeGroups);
-    toggleShellHomeGroups();
+    actionSelect.addEventListener("change", toggleCreateOnlyFields);
+    toggleCreateOnlyFields();
   }
 });
