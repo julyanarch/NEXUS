@@ -28,7 +28,7 @@
   <div class="table-scroll">
   <table>
     <thead>
-      <tr><th>Usuário</th><th>Servidor</th><th>IP</th><th>Origem</th><th>Status</th><th>Dias bloqueado</th><th>Chamado</th><th>Criado em</th><th></th></tr>
+      <tr><th>Usuário</th><th>Servidor</th><th>IP</th><th>Origem</th><th>Status</th><th>Dias bloqueado</th><th>Bloqueado em</th><th>Removido em</th><th>Chamado</th><th>Criado em</th><th></th></tr>
     </thead>
     <tbody>
       {% for u in users %}
@@ -51,12 +51,14 @@
           {{ u.days_locked }}
           {% else %}-{% endif %}
         </td>
+        <td>{{ u.locked_at or '-' }}</td>
+        <td>{{ u.removed_at or '-' }}</td>
         <td>{{ u.ticket or '-' }}</td>
         <td>{{ u.created_at }}</td>
         <td><a href="{{ url_for('user_detail', user_id=u.id) }}">detalhes / IA</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="9" class="muted">Nenhum usuário encontrado.</td></tr>
+      <tr><td colspan="11" class="muted">Nenhum usuário encontrado.</td></tr>
       {% endfor %}
     </tbody>
   </table>
