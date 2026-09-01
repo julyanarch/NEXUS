@@ -10,6 +10,31 @@ por isso passou a se chamar **NEXUS**. Ele também chegou a incluir um scan de s
 exclusivamente gestão de usuários, reaproveitando `nexus_sanitize_users.sh` sem alterações na
 lógica.
 
+## O fluxo de trabalho, resumido
+
+O código é escrito no **PC pessoal** (VS Code) e o dashboard roda de fato numa **VM da empresa**
+usada como ambiente de teste — a "máquina ponte" (no ambiente atual, o host `asc-bd-lab-01`,
+acessado como `root`). As duas máquinas não compartilham pasta nenhuma: a ligação entre elas é só
+o GitHub.
+
+```
+PC pessoal (git push)  →  GitHub (repo privado)  →  VM ponte (git pull)  →  python app.py
+```
+
+No dia a dia, depois da primeira instalação (passos abaixo), rodar o projeto se resume a:
+
+```bash
+cd ~/nexus/nexus_dashboard
+source .venv/bin/activate
+python app.py
+```
+
+Prompt esperado quando está tudo certo:
+
+```
+(.venv) root@asc-bd-lab-01:~/nexus/nexus_dashboard#
+```
+
 ## Passo a passo, do zero, na VM (máquina ponte)
 
 O dashboard precisa de Linux — o Ansible não roda nativamente no Windows. Ele deve rodar na mesma
@@ -20,7 +45,7 @@ VM/ponte que já tem acesso SSH aos servidores gerenciados (`douglas`, `andressa
 `git pull` — não depende de pasta compartilhada nem de copiar arquivo por arquivo:
 
 ```bash
-# dentro da VM (máquina ponte)
+# dentro da VM (máquina ponte), só na primeira vez
 git clone https://github.com/julyanarch/NEXUS.git ~/nexus
 cd ~/nexus/nexus_dashboard
 ```
@@ -57,8 +82,9 @@ pip install -r requirements.txt
 Isso instala Flask, Ansible (`ansible-core` + `ansible-runner`) e o restante dentro do `.venv` —
 nada é instalado no sistema.
 
-**4. Confirmar que a chave SSH da ponte já está autorizada** nos servidores gerenciados (se ainda
-não fez isso, é o mesmo passo do `README.md` original):
+**4. Confirmar que a chave SSH da ponte já está autorizada** nos servidores gerenciados (gerada uma
+única vez na ponte com `ssh-keygen -t ed25519`; detalhe de por que isso não elimina a senha de sudo
+está na seção 2 de [../docs/DOCUMENTACAO_TECNICA.md](../docs/DOCUMENTACAO_TECNICA.md)):
 
 ```bash
 ssh-copy-id think@10.1.255.111        # douglas

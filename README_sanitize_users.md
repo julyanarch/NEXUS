@@ -3,6 +3,13 @@
 Manual do `nexus_sanitize_users.sh`, responsável pelo onboarding e offboarding
 de usuários Linux a partir do arquivo `/opt/usuarios.csv`.
 
+> **Nota:** hoje a operação do dia a dia acontece pelo **dashboard web**
+> (`nexus_dashboard/`, veja [nexus_dashboard/README_dashboard.md](nexus_dashboard/README_dashboard.md)),
+> que executa este mesmo script por trás via Ansible — sem precisar editar CSV manualmente nem
+> usar os aliases descritos aqui. Este documento continua servindo como referência técnica do
+> script em si (usado tanto no fluxo manual abaixo quanto internamente pelo Ansible) e como
+> alternativa de operação manual em caso de emergência (ex.: dashboard fora do ar).
+
 ## O que ele faz
 
 | Ação | Resultado |
