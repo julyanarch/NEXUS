@@ -1214,3 +1214,42 @@ representando visualmente o conceito de nexus/ponto de conexão, nas cores roxas
 do tema (`--purple`/`--purple-dark` do `theme.css`). Usado em dois lugares: ao lado do texto
 "NEXUS." na barra lateral (`.brand-row`, novo) e como favicon (`<link rel="icon">` em
 `base.html` - não existia nenhum antes).
+
+---
+
+## 53. Cadastro de servidor falhava com "usuário não existe" mesmo o usuário existindo
+
+Achado em teste real: cadastro do servidor `10.1.255.100` (usuário `root`, que existe de verdade)
+falhava com a mensagem padrão da seção 51 - "Confirme que o usuário existe no servidor..." - tanto
+na aplicação quanto rodando `ssh-copy-id` direto no terminal contra o mesmo host. O detalhe técnico
+entre parênteses, porém, não era um erro de autenticação: `Unable to negotiate with 10.1.255.100
+port 22: no matching host key type found. Their offer: ssh-rsa,ssh-dss`.
+
+**Causa raiz:** essa mensagem não tem nada a ver com usuário/senha/chave autorizada - é uma falha na
+**negociação do protocolo SSH**, que acontece antes de qualquer autenticação. `10.1.255.100` é um
+host antigo cujo servidor SSH só oferece `ssh-rsa` e `ssh-dss` como tipos de host key. Desde o
+OpenSSH 8.8 (2021), o cliente SSH desativa `ssh-rsa` (assinatura baseada em SHA-1) por padrão, e o
+`ssh-dss` (DSA) já era desativado desde o OpenSSH 7.0 (2015) por ser fraco. Resultado: cliente e
+servidor não têm nenhum tipo de host key em comum e o handshake quebra imediatamente - a mensagem
+genérica da seção 51 (pensada pra "usuário inexistente"/"chave não autorizada") ficou enganosa
+nesse caso, porque o teste de conexão do NEXUS (`ansible_bridge.test_connection`, via
+`ansible_runner`) usa o mesmo cliente SSH do sistema por baixo e sofre da mesma restrição.
+
+**Correção:** `nexus_dashboard/ansible/ansible.cfg` passou a ter uma seção `[ssh_connection]` com
+`ssh_args = ... -o HostKeyAlgorithms=+ssh-rsa`. O `+` **acrescenta** `ssh-rsa` à lista padrão de
+algoritmos aceitos em vez de substituí-la - hosts modernos continuam preferindo
+`ed25519`/`ecdsa`/`rsa-sha2` normalmente, e só cai para `ssh-rsa` quando o servidor remoto é antigo
+e não oferece nada melhor (como `10.1.255.100`). Como o `ANSIBLE_CONFIG` do NEXUS aponta
+explicitamente pra esse `ansible.cfg` (`ansible_bridge._run`), a correção vale pra toda execução
+Ansible da aplicação (teste de conexão, criar/bloquear/remover usuário, etc.) sem precisar editar
+`~/.ssh/config` manualmente no servidor onde o NEXUS roda - o que não seria versionado nem
+sobreviveria a uma reinstalação.
+
+Isso resolve o teste de conexão do NEXUS, mas **não** resolve o cadastro da chave em si: o
+`ssh-copy-id` do terminal (usado uma vez, manualmente, pra autorizar a chave do NEXUS no servidor -
+seção "Duas autenticações diferentes") sofre da mesma restrição e precisa da mesma flag na hora de
+rodar:
+
+```
+ssh-copy-id -o HostKeyAlgorithms=+ssh-rsa root@10.1.255.100
+```
