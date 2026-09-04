@@ -1325,16 +1325,41 @@ mostra tudo - a versão remota do OpenSSH, e se aparece "Offering public key" se
 "Authentications that can continue" de novo (em vez de "Server accepts key"), a chave foi
 oferecida e recusada.
 
-**Correção:** gerar, uma única vez na ponte, uma chave **RSA** adicional (sem apagar a Ed25519
-existente - as duas convivem, o cliente SSH tenta todas as identidades padrão em sequência) e
-autorizar essa RSA especificamente nos servidores antigos demais para Ed25519:
+**Correção, parte 1 (chave):** gerar, uma única vez na ponte, uma chave **RSA** adicional (sem
+apagar a Ed25519 existente - as duas convivem, o cliente SSH tenta todas as identidades padrão em
+sequência) e autorizar essa RSA especificamente nos servidores antigos demais para Ed25519:
 
 ```bash
 ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
 ssh-copy-id -o HostKeyAlgorithms=+ssh-rsa -i /root/.ssh/id_rsa.pub julyana.silva@10.1.255.100
 ```
 
-Não exige nenhuma mudança de código no NEXUS: `inventory_builder.py`/`ansible_bridge.py` não fixam
-identidade de chave nenhuma - dependem do comportamento padrão do cliente SSH de tentar todas as
-identidades em `~/.ssh/` (a mesma razão pela qual isso funciona de forma transparente para todos os
-servidores, antigos ou modernos, sem precisar dizer ao Ansible qual chave usar em qual host).
+Isso sozinho **não bastou** - o teste manual (`ssh -o HostKeyAlgorithms=+ssh-rsa
+julyana.silva@10.1.255.100 id`) continuou pedindo senha mesmo com a chave RSA certa já autorizada.
+
+**Correção, parte 2 (assinatura da chave - a causa real que faltava):** existe uma segunda
+restrição do mesmo tipo que a do `HostKeyAlgorithms`, só que numa camada diferente. Desde o
+OpenSSH 8.8, o cliente também para de *oferecer* assinatura RSA no formato antigo (SHA-1) por
+padrão, oferecendo só as variantes modernas `rsa-sha2-256`/`512` (RFC 8332, existentes desde 2016).
+Um servidor `OpenSSH_5.3` (~2010) é anterior a essas variantes e só entende o formato antigo -
+então mesmo com a chave certa autorizada, o cliente se recusava a oferecê-la no formato que esse
+servidor entende. A flag que faltava:
+
+```bash
+ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedAlgorithms=+ssh-rsa julyana.silva@10.1.255.100 id
+```
+
+Com essa segunda flag, autenticou sem pedir senha - confirmando a causa.
+
+**Diferente da parte 1 (chave), essa parte 2 exige mudança de código no NEXUS**, senão o Ansible
+continua caindo no mesmo problema mesmo com a chave certa: `nexus_dashboard/ansible/ansible.cfg`,
+seção `[ssh_connection]`, `ssh_args` ganhou `-o PubkeyAcceptedAlgorithms=+ssh-rsa` ao lado do
+`HostKeyAlgorithms=+ssh-rsa` que já existia (mesmo padrão de "`+` acrescenta, não substitui" -
+servidores modernos continuam preferindo as assinaturas modernas normalmente).
+
+**Resumo da diferença entre as duas flags**, pra não confundir de novo:
+
+| Flag | Resolve o quê | Sintoma sem ela |
+|---|---|---|
+| `HostKeyAlgorithms=+ssh-rsa` | Chave do **servidor** (host key) - identifica o servidor | `Unable to negotiate ... no matching host key type found`, quebra antes de qualquer autenticação |
+| `PubkeyAcceptedAlgorithms=+ssh-rsa` | Chave do **usuário** (autenticação) - identifica quem conecta | Autenticação sempre cai pra senha, mesmo com a chave certa autorizada em `authorized_keys` |
