@@ -1291,3 +1291,50 @@ manual, comando por comando, sem nenhuma automação nem auditoria. Descrever s�
 "Descrição do processo (evolução até o NEXUS)", com subseções 2.3.1 (Estágio 1), 2.3.2 (Estágio 2)
 e 2.3.3 (deixando explícito que o AS IS de referência do documento é o Estágio 2, com o Estágio 1
 citado como contexto histórico). Versão `.docx` regenerada a partir do `.md` corrigido.
+
+---
+
+## 55. Servidor antigo demais até para a chave de usuário (Ed25519) - não só o host key
+
+A seção 53 já cobria um servidor antigo (`10.1.255.100`) cujo *host key* só aceitava `ssh-rsa`
+(resolvido com `HostKeyAlgorithms=+ssh-rsa`). Cadastrando um servidor novo diferente, com o mesmo
+IP mas outro usuário (`julyana.silva`, não `root`), apareceu um problema parecido, mas numa camada
+diferente: `ssh-copy-id` funcionava (`Number of key(s) added: 1`), a chave aparecia certinha em
+`~/.ssh/authorized_keys` do usuário (dono e permissão corretos - `700`/`600`), SELinux desabilitado,
+`sshd_config` sem nada de anormal - e mesmo assim `ssh` continuava pedindo senha.
+
+**Descoberto com `ssh -v` (do lado do cliente, na ponte) - não pelo lado do servidor:**
+
+```
+debug1: Remote protocol version 2.0, remote software version OpenSSH_5.3
+...
+debug1: Offering public key: /root/.ssh/id_ed25519 ED25519 SHA256:...
+debug1: Authentications that can continue: publickey,password
+```
+
+**Causa raiz:** o servidor roda `OpenSSH_5.3` (~2009/2010) - o suporte a chaves **Ed25519** só foi
+adicionado ao OpenSSH na versão 6.5 (2014). A chave da ponte (gerada com `ssh-keygen -t ed25519`,
+ver seção 2 "Duas autenticações diferentes") é oferecida, mas o servidor não entende esse tipo de
+chave e a recusa - por isso a autenticação sempre cai para senha, mesmo com o arquivo
+`authorized_keys` perfeitamente correto. Diferente da seção 53 (recusa na negociação da chave de
+*host*, antes de qualquer autenticação), aqui a recusa é na chave de *usuário*, depois do handshake
+já ter sido resolvido pelo `HostKeyAlgorithms=+ssh-rsa`.
+
+**Como confirmar rapidamente (sem depender de log do servidor):** `ssh -v` do lado do cliente já
+mostra tudo - a versão remota do OpenSSH, e se aparece "Offering public key" seguido de
+"Authentications that can continue" de novo (em vez de "Server accepts key"), a chave foi
+oferecida e recusada.
+
+**Correção:** gerar, uma única vez na ponte, uma chave **RSA** adicional (sem apagar a Ed25519
+existente - as duas convivem, o cliente SSH tenta todas as identidades padrão em sequência) e
+autorizar essa RSA especificamente nos servidores antigos demais para Ed25519:
+
+```bash
+ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
+ssh-copy-id -o HostKeyAlgorithms=+ssh-rsa -i /root/.ssh/id_rsa.pub julyana.silva@10.1.255.100
+```
+
+Não exige nenhuma mudança de código no NEXUS: `inventory_builder.py`/`ansible_bridge.py` não fixam
+identidade de chave nenhuma - dependem do comportamento padrão do cliente SSH de tentar todas as
+identidades em `~/.ssh/` (a mesma razão pela qual isso funciona de forma transparente para todos os
+servidores, antigos ou modernos, sem precisar dizer ao Ansible qual chave usar em qual host).
