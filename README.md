@@ -1,9 +1,14 @@
 # NEXUS — Gestão de Usuários
 
 O NEXUS automatiza o onboarding/offboarding de usuários Linux em múltiplos servidores,
-substituindo um fluxo antigo baseado em terminal + aliases + edição manual de CSV. Toda ação
-(criar, bloquear, remover, purgar) fica registrada para fins de **auditoria** — quem fez o quê,
-quando, e com qual chamado.
+substituindo um protótipo anterior baseado em terminal + aliases + edição manual de CSV — que, por
+sua vez, já tinha substituído um processo ainda mais antigo, 100% manual (login e senha em cada
+servidor, comandos padrão do Linux digitados um a um). Toda ação (criar, bloquear, remover, purgar)
+fica registrada para fins de **auditoria** — quem fez o quê, quando, e com qual chamado.
+
+> A linha do tempo completa (processo manual original → protótipo com scripts e CSV → NEXUS) está
+> detalhada em [docs/DOCUMENTACAO_PROJETO_ESTAGIO_IA.md](docs/DOCUMENTACAO_PROJETO_ESTAGIO_IA.md),
+> seção 2.3.
 
 O projeto se chamava **"CORTEX"** originalmente; o nome colidia com a IA interna da empresa, e
 como o projeto ganhou sua própria IA e identidade, foi renomeado para **NEXUS** ("ligação/elo" em
@@ -16,11 +21,13 @@ Existem duas camadas, mas **apenas uma é usada no dia a dia**:
 | Camada | O que é | Uso hoje |
 | --- | --- | --- |
 | **Dashboard web** (`nexus_dashboard/`) | Flask + Ansible + IA local, com interface gráfica | ✅ Forma atual de operar — sem terminal, sem editar CSV |
-| Script + aliases por terminal (`nexus_sanitize_users.sh`, `nexus_remote.sh`, `servidores.conf`) | Fluxo original, por linha de comando | Mantido como referência/emergência — a lógica de baixo nível (`nexus_sanitize_users.sh`) é a mesma que o Ansible executa por trás do dashboard |
+| Script + aliases por terminal (`nexus_sanitize_users.sh`, `nexus_remote.sh`, `servidores.conf`) | Protótipo por linha de comando, anterior ao dashboard (não é o processo original — ver nota acima) | Mantido como referência/emergência — a lógica de baixo nível (`nexus_sanitize_users.sh`) é a mesma que o Ansible executa por trás do dashboard |
 
-Ou seja: o dashboard não é um projeto separado — é a evolução do fluxo original, com a mesma base
-testada de script, só que orquestrada por Ansible e exposta numa interface web, sem pedir senha
-por servidor a cada execução.
+Ou seja: o dashboard não é um projeto separado — é a evolução desse protótipo por linha de comando,
+com a mesma base testada de script, só que orquestrada por Ansible e exposta numa interface web,
+sem pedir senha por servidor a cada execução. E esse próprio protótipo já tinha sido, no seu
+tempo, uma evolução sobre o processo 100% manual que existia antes dele (ver seção 2.3 do link
+acima).
 
 **Para rodar e apresentar o projeto, use o dashboard:** manual completo em
 [nexus_dashboard/README_dashboard.md](nexus_dashboard/README_dashboard.md).
@@ -121,7 +128,7 @@ Passo a passo completo (primeira vez, dependências, IP de acesso, uso da interf
 | --- | --- |
 | `nexus_dashboard/` | Dashboard web (Flask + Ansible + IA) — forma atual de operar |
 | `nexus_sanitize_users.sh` | Cria, bloqueia ou remove usuários; reaproveitado pelo Ansible e disponível para uso manual via CSV |
-| `nexus_remote.sh` + `servidores.conf` | Controlador remoto por terminal/aliases (fluxo original, ver [README_sanitize_users.md](README_sanitize_users.md)) |
+| `nexus_remote.sh` + `servidores.conf` | Controlador remoto por terminal/aliases (protótipo anterior ao dashboard, não o processo original — ver [README_sanitize_users.md](README_sanitize_users.md)) |
 | `scripts/auto_commit.ps1` | Auxiliar opcional no PC pessoal: commit+push automático das mudanças |
 | `docs/DOCUMENTACAO_TECNICA.md` | Documentação técnica viva: decisões de arquitetura, bugs resolvidos, perguntas frequentes |
 
