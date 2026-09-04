@@ -59,11 +59,30 @@ Tecnologia da Informação — Infraestrutura de servidores e Segurança da Info
 
 Garantir que o ciclo de vida de contas de usuário em servidores Linux — criação no onboarding, bloqueio, remoção e expurgo no offboarding — seja executado de forma correta, rastreável e dentro do prazo, em todos os servidores relevantes, com registro de quem executou cada ação, quando e sob qual chamado/justificativa.
 
-### 2.3 Descrição do processo atual (AS IS)
+### 2.3 Descrição do processo (evolução até o NEXUS)
 
-Antes do NEXUS, o processo era operado por um script de linha de comando (`nexus_sanitize_users.sh`) disparado por um controlador remoto (`nexus_remote.sh`) que lia uma lista de servidores em texto (`servidores.conf`) e um lote de usuários a processar em um arquivo `usuarios.csv`. Esse script continua existindo e é reaproveitado pelo NEXUS (ver seção 4.2) — a mudança não foi na lógica de baixo nível, testada e validada, mas em como ela é operada.
+A gestão de usuários passou por dois estágios de evolução antes deste projeto de IA começar. É importante registrar essa linha do tempo corretamente, porque o ganho real do NEXUS só fica claro quando comparado ao processo verdadeiramente original — e não a uma versão dele que já havia sido parcialmente automatizada antes deste projeto.
 
-**Fluxo sequencial do processo AS IS:**
+#### 2.3.1 Estágio 1 — processo manual original (anterior a qualquer automação)
+
+Antes de existir qualquer script, cada ação de gestão de usuário era feita por completo manualmente, servidor por servidor, sem nenhuma ferramenta de apoio:
+
+1. O analista abre uma sessão SSH diretamente para um servidor específico, autenticando com **login e senha** (sem chave SSH, sem automação, um servidor de cada vez).
+2. Digita, um a um, os comandos padrão do próprio Linux correspondentes à ação desejada — por exemplo `useradd`/`passwd`/`chage -d 0` para criar; `usermod -L`/`chage -E 0` para bloquear; `userdel` ou `userdel -r` para remover/purgar.
+3. Confere manualmente o resultado ainda na mesma sessão (ex.: `id`, `passwd -S`).
+4. Encerra a sessão e repete os passos 1 a 3 inteiramente do zero no próximo servidor, caso a mesma ação precise ser aplicada em mais de um.
+
+Não havia script, não havia lista de servidores centralizada, não havia planilha de lote e não havia nenhum arquivo de log de auditoria — o único registro, quando existia, era feito de memória ou em anotações avulsas do próprio analista. Esse é o processo genuinamente original: mais lento, sem nenhuma padronização entre execuções, e mais sujeito a erro de digitação em comandos potencialmente destrutivos (ex.: um `userdel -r` digitado no usuário errado, sem nenhuma etapa de simulação prévia).
+
+**Tempo médio gasto (estimativa qualificada):** da ordem de 25 a 35 minutos por ação, por servidor, somando login manual, digitação de múltiplos comandos individuais e conferência manual do resultado — sem nenhum log automático de apoio.
+
+#### 2.3.2 Estágio 2 — protótipo com script e planilha CSV
+
+Como uma primeira evolução — ainda anterior a este projeto de IA — foi criado, pela própria equipe, um protótipo de automação por linha de comando: um controlador remoto (`nexus_remote.sh`), uma lista de servidores em texto (`servidores.conf`), um script único que padroniza as ações no servidor de destino (`nexus_sanitize_users.sh`) e um arquivo de lote (`usuarios.csv`) onde o analista descrevia os usuários e ações a processar. Esse script continua existindo e é reaproveitado pelo NEXUS sem alterações na lógica (ver seção 4.2).
+
+Esse protótipo trouxe uma melhoria real sobre o Estágio 1 — o mesmo comando sempre executa a mesma sequência testada de ações no servidor, sem depender da memória do analista para lembrar cada comando individual, e passou a gerar relatórios de execução (TXT/JSON/CSV) em cada servidor. Mas manteve dois atritos importantes, que se tornaram o novo gargalo:
+
+**Fluxo sequencial do Estágio 2:**
 
 1. O analista abre um terminal com acesso SSH à máquina de controle.
 2. Edita manualmente o arquivo `usuarios.csv`, adicionando/alterando a linha do usuário e da ação desejada (criar, bloquear, remover).
@@ -79,7 +98,11 @@ Antes do NEXUS, o processo era operado por um script de linha de comando (`nexus
 
 **Erros frequentes:** erro de digitação de nome de grupo/shell em texto livre no CSV; ausência de validação de senha temporária (sem exigência de complexidade); uso recorrente da mesma senha temporária padrão da equipe, que na prática nunca era trocada por muitos usuários.
 
-**Tempo médio gasto (estimado, a validar com medição real após adoção plena):** aproximadamente 15 a 20 minutos por ação, por servidor, somando edição de CSV, execução, digitação de senha e conferência manual de log — ação replicada em cada servidor de destino, sem paralelismo.
+**Tempo médio gasto (estimativa qualificada, a validar com medição real após adoção plena):** aproximadamente 15 a 20 minutos por ação, por servidor, somando edição de CSV, execução, digitação de senha e conferência manual de log — ação replicada em cada servidor de destino, sem paralelismo. Já representa uma melhoria frente ao Estágio 1, mas ainda está longe do potencial de automação real.
+
+#### 2.3.3 Ponto de partida deste projeto (AS IS de referência)
+
+Este projeto de IA parte do **Estágio 2** como baseline operacional imediato: é esse fluxo de scripts e planilha CSV que o NEXUS Dashboard substitui diretamente, reaproveitando a lógica já testada do script (`nexus_sanitize_users.sh`) sem reescrevê-la, mas eliminando a necessidade de editar CSV manualmente e de digitar senha a cada execução. A comparação AS IS x TO BE apresentada nas seções 3 e 5 deste documento toma o Estágio 2 como referência de "processo atual", por ser o que estava efetivamente em uso no momento em que este projeto foi iniciado. O Estágio 1 é apresentado aqui como contexto histórico indispensável, para que o ganho do projeto seja dimensionado sobre a evolução completa do processo, não apenas sobre a etapa mais recente dela.
 
 ---
 

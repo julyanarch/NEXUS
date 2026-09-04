@@ -1253,3 +1253,41 @@ rodar:
 ```
 ssh-copy-id -o HostKeyAlgorithms=+ssh-rsa root@10.1.255.100
 ```
+
+---
+
+## 54. Correção de histórico: o processo "antigo" tinha dois estágios, não um só
+
+Ao revisar a documentação formal do projeto (`docs/DOCUMENTACAO_PROJETO_ESTAGIO_IA.md`), o AS IS
+descrito estava tecnicamente incorreto: ele descrevia o fluxo de `nexus_remote.sh` +
+`servidores.conf` + `usuarios.csv` + `nexus_sanitize_users.sh` como se fosse "como o processo
+sempre foi feito antes do NEXUS" — mas esse fluxo de scripts **já era, em si, um protótipo/evolução**
+criado pela própria dona do projeto, não o processo original.
+
+**Linha do tempo real, em três estágios:**
+
+1. **Estágio 1 — processo manual original (o de fato "antes de tudo"):** cada ação era feita
+   entrando via SSH em cada servidor, um de cada vez, autenticando com **login e senha** (sem
+   chave SSH, sem qualquer automação), e digitando diretamente os comandos padrão do Linux pra
+   cada ação (`useradd`/`passwd`/`chage -d 0` pra criar; `usermod -L`/`chage -E 0` pra bloquear;
+   `userdel`/`userdel -r` pra remover/purgar). Sem script, sem CSV, sem lista de servidores
+   centralizada, sem nenhum log de auditoria — só o que o analista guardava de memória.
+2. **Estágio 2 — protótipo com script e planilha CSV:** criado depois, ainda antes deste projeto
+   de IA, pra parar de digitar comando por comando toda vez — isso é o que virou
+   `nexus_sanitize_users.sh` + `nexus_remote.sh` + `servidores.conf` + `usuarios.csv`. Foi esse
+   protótipo, não o Estágio 1, que a documentação tinha descrito (corretamente em termos de
+   funcionamento, incorretamente em rotulá-lo como "o processo antigo/original").
+3. **NEXUS Dashboard (este projeto):** parte do Estágio 2 como baseline, reaproveitando o script
+   sem reescrever a lógica, e resolve os atritos que sobraram dele (CSV manual, senha por
+   execução, log fragmentado).
+
+**Por que isso importa pra apresentação:** o ganho real do projeto é maior do que "só" a diferença
+entre CSV/terminal e dashboard — ele representa a evolução completa desde um processo 100%
+manual, comando por comando, sem nenhuma automação nem auditoria. Descrever só o Estágio 2 como
+"o antigo" sub-representa a jornada real e pode gerar uma pergunta capciosa numa apresentação
+("mas isso não é só trocar CSV por formulário?") sem contexto pra responder bem.
+
+**Correção aplicada:** `docs/DOCUMENTACAO_PROJETO_ESTAGIO_IA.md`, seção 2.3, reescrita como
+"Descrição do processo (evolução até o NEXUS)", com subseções 2.3.1 (Estágio 1), 2.3.2 (Estágio 2)
+e 2.3.3 (deixando explícito que o AS IS de referência do documento é o Estágio 2, com o Estágio 1
+citado como contexto histórico). Versão `.docx` regenerada a partir do `.md` corrigido.
