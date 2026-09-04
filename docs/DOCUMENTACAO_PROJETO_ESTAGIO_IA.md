@@ -32,7 +32,8 @@ Este documento apresenta o projeto NEXUS, uma solução que aplica automação o
 6. BENEFÍCIOS ESPERADOS
 7. RISCOS E CONTROLES
 8. PLANO DE IMPLANTAÇÃO SIMPLIFICADO
-9. CONCLUSÃO
+9. TRABALHOS FUTUROS: SUPORTE A SERVIDORES WINDOWS
+10. CONCLUSÃO
 APÊNDICE A — Arquitetura Técnica Detalhada
 APÊNDICE B — Decisões de Arquitetura e Alternativas Consideradas
 REFERÊNCIAS
@@ -245,7 +246,57 @@ Essa frase é montada dinamicamente a partir de `LOCK_MAX_DAYS = 90` e `LOCK_WAR
 
 ---
 
-## 9 CONCLUSÃO
+## 9 TRABALHOS FUTUROS: SUPORTE A SERVIDORES WINDOWS
+
+> **Natureza deste item.** O conteúdo desta seção é uma proposta de evolução — uma ideia de arquitetura a ser avaliada e amadurecida — e **não** faz parte do escopo entregue neste projeto. Está registrado aqui para orientar decisões técnicas quando essa expansão for priorizada em uma fase futura.
+
+### 9.1 Motivação
+
+O ambiente de infraestrutura da empresa não é composto só por servidores Linux — há (ou pode haver, dependendo da área) servidores Windows com o mesmo tipo de necessidade: contas de usuário criadas no onboarding, bloqueadas/removidas no offboarding, e o mesmo risco de contas esquecidas sem revisão. Hoje esse universo Windows não é coberto pelo NEXUS. A ideia é estender o mesmo conceito — painel único, execução orquestrada, auditoria centralizada e um resumo gerado por IA local — para contas Windows, evitando manter duas ferramentas completamente separadas para o mesmo tipo de processo.
+
+### 9.2 Desafios técnicos específicos do Windows
+
+A automação em Windows não é uma simples adaptação do que já existe — o mecanismo de execução remota é outro:
+
+- **Protocolo de acesso remoto diferente.** Linux usa SSH; Windows usa nativamente **WinRM** (*Windows Remote Management*, baseado em WS-Management). É preciso que cada servidor Windows tenha um listener WinRM habilitado (HTTP ou, preferencialmente, HTTPS) — um passo de preparação equivalente ao `ssh-copy-id` de hoje, mas com mecanismo próprio.
+- **Comandos de gestão de usuário diferentes.** Não existem `useradd`/`usermod`/`userdel` no Windows. O equivalente é feito via PowerShell (`New-LocalUser`, `Set-LocalUser`, `Disable-LocalUser`, `Remove-LocalUser`) ou, em ambiente de domínio, via módulo `ActiveDirectory` (`New-ADUser`, `Disable-ADAccount`, `Remove-ADUser`). O script `nexus_sanitize_users.sh` (Bash) não é reaproveitável nesse cenário — precisaria de um equivalente escrito para Windows.
+- **Sem "sudo".** O Windows não tem um conceito equivalente de elevação de privilégio por senha avulsa a cada execução — a própria credencial usada na conexão WinRM já precisa ter, de origem, permissão administrativa (local ou delegada via domínio). Muda o modelo de segredo guardado no Vault: em vez de "senha de sudo do servidor X", seria "credencial de uma conta de serviço com permissão delegada", com implicações de segurança próprias (privilégio permanente da credencial, não pontual).
+- **Escopo de identidade a decidir.** Servidores Windows corporativos, na prática, costumam gerenciar contas via **Active Directory** (domínio), não contas locais por servidor — diferente do modelo atual do NEXUS (local por servidor). Essa é uma decisão de arquitetura relevante a se tomar antes de iniciar: gerenciar contas locais isoladas por servidor Windows, ou integrar com o Active Directory da empresa (mais próximo da realidade corporativa, porém com superfície de impacto maior).
+- **Sem equivalente direto ao `bash_history`.** A coleta de histórico de comandos (hoje best-effort, via `~/.bash_history`) não tem paralelo direto no Windows — exigiria habilitar auditoria de linha de comando (Log de Eventos do Windows, *Event ID 4688*, com *Process Creation Command Line Auditing* ativado via GPO) nos servidores geridos **antes** de qualquer coleta funcionar, o que é uma configuração prévia a ser feita no ambiente, não algo que o NEXUS resolve sozinho.
+
+### 9.3 Proposta de arquitetura (ideia)
+
+A proposta é **não recriar o NEXUS do zero para Windows**, e sim estender a base já existente:
+
+- Manter o **mesmo painel Flask** e o **mesmo banco SQLite**, adicionando uma coluna `platform` (`linux`/`windows`) à tabela `servers`, para o dashboard saber qual conjunto de playbooks/execuções usar por servidor.
+- Manter o **Ansible como motor de orquestração**. O Ansible já possui uma coleção oficial para Windows (`ansible.windows`), com módulos como `win_user`, `win_group` e `win_user_right`, conectando via `ansible_connection: winrm` em vez de SSH. Isso significaria reaproveitar praticamente toda a integração já construída (`ansible_bridge.py`, captura de artefatos, leitura de status de execução ok/skipped/blocked/failed) — trocando apenas o conjunto de playbooks e o plugin de conexão, sem reescrever a camada de orquestração.
+- Criar um **novo conjunto de playbooks Windows**, equivalentes em intenção ao `nexus_sanitize_users.sh`, usando os módulos nativos do Ansible para Windows (não PowerShell solto embutido em script) para as mesmas quatro ações (criar, bloquear, remover, purgar), preservando o mesmo padrão de status já usado na aplicação.
+- **Vault:** continuar usando Ansible Vault, mas armazenando a credencial da conta de serviço com permissão delegada (WinRM), no mesmo padrão de segredo por servidor (ou por domínio, se a integração com Active Directory for adotada) já usado hoje.
+- **Camada de IA (`ai_engine.py`):** não exigiria reescrita conceitual — ela já opera sobre fatos abstratos (status, dias bloqueado, grupos), independentes de sistema operacional. Precisaria apenas de um coletor de fatos equivalente para Windows (ex.: `Get-LocalUser`/consulta ao Active Directory no lugar do `discover_existing_users.yml` atual).
+
+### 9.4 Tecnologias candidatas (a avaliar)
+
+| Opção | Descrição | Observação |
+|---|---|---|
+| **Ansible + coleção `ansible.windows` + WinRM** (recomendada como ponto de partida) | Reaproveita toda a integração Ansible já construída no NEXUS | Menor esforço de reescrita; mesma arquitetura de orquestração |
+| PowerShell Remoting direto (`Invoke-Command`, via `pypsrp`/`pywinrm` a partir do Python) | Chamada remota sem depender do Ansible | Mais controle fino, porém duplicaria lógica de orquestração que o Ansible já resolve hoje |
+| `Microsoft.AD.ADUser`/módulo `ActiveDirectory` (para ambientes de domínio) | Gestão de contas centralizada no Active Directory, em vez de contas locais por servidor | Mais alinhado à realidade corporativa, mas exige decisão prévia de escopo (seção 9.2) |
+| Listener WinRM sobre HTTPS (certificado) | Alternativa mais segura ao HTTP + NTLM | Recomendado por padrão de segurança, evita tráfego de credencial menos protegido na rede interna |
+
+### 9.5 Pontos em aberto (decisões necessárias antes de iniciar)
+
+- Escopo: contas locais por servidor Windows autônomo, ou contas de domínio via Active Directory?
+- Qual conta de serviço terá a permissão delegada necessária, e como essa credencial será protegida e com que nível de privilégio mínimo (princípio do menor privilégio)?
+- Como endereçar a lacuna do histórico de comandos (item mais dependente de configuração prévia do ambiente, fora do controle direto do NEXUS)?
+- Vale unificar tudo em um único painel multiplataforma (Linux + Windows), ou manter dashboards separados por tecnologia, com auditoria consolidada por trás?
+
+### 9.6 Status
+
+Item de evolução do roadmap, ainda **não iniciado** e fora do escopo atual entregue. Registrado nesta documentação para servir de ponto de partida técnico quando a expansão para servidores Windows for priorizada pela área.
+
+---
+
+## 10 CONCLUSÃO
 
 O NEXUS demonstra, em um processo real e recorrente da área de infraestrutura, como automação orquestrada e uma camada de Inteligência Artificial local e auditável podem substituir um fluxo manual, propenso a erro e sem visibilidade centralizada, por um processo padronizado, rastreável e com detecção proativa de risco — sem depender de serviços externos e sem custo adicional de operação da camada de IA. O projeto vale a pena porque resolve uma dor concreta e mensurável da equipe (tempo operacional, erro humano e ausência de auditoria), ao mesmo tempo em que introduz um controle de segurança que antes não existia de forma sistemática — a identificação e o encerramento automático de contas de acesso esquecidas. O escopo foi deliberadamente mantido enxuto (IA de regras, não IA generativa; foco exclusivo em gestão de usuários, sem reintroduzir escopos removidos como scanner de segurança), o que tornou a solução mais simples de manter, de explicar e de confiar — um critério tão importante quanto a sofisticação técnica em um projeto cujo objetivo é apoiar decisões operacionais e de segurança.
 
