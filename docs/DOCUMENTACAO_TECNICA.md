@@ -1389,3 +1389,54 @@ servidores modernos continuam preferindo as assinaturas modernas normalmente).
 |---|---|---|
 | `HostKeyAlgorithms=+ssh-rsa` | Chave do **servidor** (host key) - identifica o servidor | `Unable to negotiate ... no matching host key type found`, quebra antes de qualquer autenticação |
 | `PubkeyAcceptedAlgorithms=+ssh-rsa` | Chave do **usuário** (autenticação) - identifica quem conecta | Autenticação sempre cai pra senha, mesmo com a chave certa autorizada em `authorized_keys` |
+
+---
+
+## 56. Cadastro de servidor falhava com "module interpreter '/usr/bin/python3' was not found" - mesmo com SSH funcionando
+
+Cadastrando outro servidor antigo (usuário `nexus` em `10.1.255.100`, o mesmo host das seções 53 e
+55): a autenticação por chave já estava confirmada manualmente (`ssh ... nexus@10.1.255.100 id`
+respondia sem pedir senha), mas o cadastro pela tela **Servidores → + Novo servidor** continuava
+sendo desfeito, com a mensagem:
+
+```
+"Verificar conectividade e identidade remota" falhou em BR-CN-CTN-01:
+The module interpreter '/usr/bin/python3' was not found.
+```
+
+**Causa raiz:** diferente das seções 53/55 (que eram sobre a camada SSH), esse erro é sobre o que
+acontece *depois* do login: todo módulo Ansible (inclusive o `command` usado no teste de conexão)
+precisa rodar um interpretador Python no servidor remoto. O `10.1.255.100` só tem **Python 2.6**
+(`/usr/bin/python`), instalado em ~2008 - não existe `/usr/bin/python3` nele. Com
+`interpreter_python = auto_silent` no `ansible.cfg`, quando a descoberta automática não encontra
+nenhum candidato conhecido, o Ansible cai de volta pro caminho padrão `/usr/bin/python3` - que
+nesse servidor não existe, e a execução falha nesse ponto, antes até de dar pra saber se
+usuário/chave estavam certos.
+
+**Correção que não bastou por si só:** o projeto já tem um mecanismo pronto pra vars por servidor -
+`nexus_dashboard/ansible/host_vars/<nome-do-servidor>/vars.yml` (o mesmo lugar onde a senha de sudo
+fica, seção 2). Criar esse arquivo manualmente com `ansible_python_interpreter: /usr/bin/python`
+**não teve efeito** no teste de conexão, porque esse diretório fica fora de `inventory/` e de
+`playbooks/` de propósito (pra não ser sobrescrito pelo `inventory_builder.py`, que só cuida de
+`hosts.yml`) - e por ficar fora, o Ansible não o descobre sozinho. Só é carregado nos playbooks que
+explicitamente têm uma task `ansible.builtin.include_vars: dir: ...` pra isso
+(`sanitize_users.yml`, `discover_existing_users.yml`, `fetch_bash_history.yml`,
+`check_home_file.yml`). `test_connection.yml` e `detect_sudo.yml` **não tinham** essa task - por
+isso o `vars.yml` criado manualmente era ignorado nesses dois testes específicos.
+
+**Correção definitiva (código):** adicionada a mesma task de `include_vars` (com `stat` +
+`delegate_to: localhost` antes, pra só carregar se o arquivo existir) em `test_connection.yml` e
+`detect_sudo.yml`, e `ansible_bridge.py` passou a enviar `host_vars_root` como extra-var nas
+chamadas `test_connection()` e `detect_sudo_nopasswd()` (igual já fazia nas outras quatro funções).
+Assim, qualquer servidor com `host_vars/<nome>/vars.yml` contendo `ansible_python_interpreter` tem
+esse valor respeitado em **todas** as execuções Ansible do NEXUS, não só nas que já carregavam
+vars por acidente de já usaram esse arquivo pra outra coisa.
+
+**Pra reaplicar em outro servidor antigo:** descobrir o Python disponível
+(`ssh usuario@host 'which python python2 python3; ls /usr/bin/python*'`) e criar
+`host_vars/<nome-exato-do-servidor-no-cadastro>/vars.yml`:
+```yaml
+ansible_python_interpreter: /usr/bin/python
+```
+O nome do arquivo/pasta precisa bater exatamente com o campo "Nome" usado no cadastro (é a chave do
+host no inventário).

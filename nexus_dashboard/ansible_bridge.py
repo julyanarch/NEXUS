@@ -80,7 +80,7 @@ def _run(playbook_path, extravars):
 
 
 def test_connection(server_name):
-    return _run(PLAYBOOK_TEST, {"target_host": server_name})
+    return _run(PLAYBOOK_TEST, {"target_host": server_name, "host_vars_root": config.HOST_VARS_DIR})
 
 
 GENERIC_DETECTION_FAILURE = "Não foi possível conectar ou executar o teste nesse servidor."
@@ -97,7 +97,7 @@ def detect_sudo_nopasswd(server_name):
     Nunca arrisca ficar esperando um prompt de senha: "sudo -n" falha na
     hora em vez de perguntar.
     """
-    result = _run(PLAYBOOK_DETECT_SUDO, {"target_host": server_name})
+    result = _run(PLAYBOOK_DETECT_SUDO, {"target_host": server_name, "host_vars_root": config.HOST_VARS_DIR})
 
     unreachable_msg = ""
     for event in result["runner"].events:

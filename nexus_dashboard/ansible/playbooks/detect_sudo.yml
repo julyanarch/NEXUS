@@ -4,13 +4,29 @@
 # prompt de senha: "sudo -n" e nao-interativo por definicao - se uma senha
 # seria necessaria, ele falha imediatamente em vez de perguntar.
 #
-# extra-vars esperadas: target_host
+# extra-vars esperadas: target_host, host_vars_root
 
 - name: NEXUS - Detectar sudo NOPASSWD
   hosts: "{{ target_host }}"
   gather_facts: no
   become: no
   tasks:
+    # Mesmo motivo do test_connection.yml: host_vars_root nao e descoberto
+    # sozinho pelo Ansible, precisa ser carregado explicitamente pra
+    # servidores com ansible_python_interpreter customizado (ex.: servidor
+    # antigo demais pra ter /usr/bin/python3).
+    - name: Verificar se ha vars configuradas para este servidor (controller)
+      ansible.builtin.stat:
+        path: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      delegate_to: localhost
+      register: host_vars_stat
+      changed_when: false
+
+    - name: Carregar vars do servidor, quando existirem
+      ansible.builtin.include_vars:
+        dir: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      when: host_vars_stat.stat.exists
+
     - name: Testar sudo nao-interativo (sudo -n)
       ansible.builtin.command: sudo -n true
       register: sudo_check

@@ -2,11 +2,34 @@
 # NEXUS Dashboard - botao "Testar conexao"
 # Substitui `nexus_remote.sh test`. Autenticacao 100% por chave SSH,
 # sem qualquer prompt de senha.
+#
+# extra-vars esperadas:
+#   target_host      nome do host no inventario
+#   host_vars_root   pasta local com host_vars/<servidor>/{vars,vault}.yml
 - name: NEXUS - Testar conexao
   hosts: "{{ target_host }}"
   gather_facts: no
   become: no
   tasks:
+    # host_vars_root fica fora de inventory/ e de playbooks/, entao o
+    # Ansible nao o descobre sozinho - precisa ser carregado explicitamente.
+    # Permite, por exemplo, host_vars/<servidor>/vars.yml com
+    # ansible_python_interpreter para servidores antigos demais pra ter
+    # /usr/bin/python3 (sem isso, ate esse teste inicial falha com
+    # "module interpreter ... was not found" antes de qualquer diagnostico
+    # de usuario/chave fazer sentido).
+    - name: Verificar se ha vars configuradas para este servidor (controller)
+      ansible.builtin.stat:
+        path: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      delegate_to: localhost
+      register: host_vars_stat
+      changed_when: false
+
+    - name: Carregar vars do servidor, quando existirem
+      ansible.builtin.include_vars:
+        dir: "{{ host_vars_root }}/{{ inventory_hostname }}"
+      when: host_vars_stat.stat.exists
+
     - name: Verificar conectividade e identidade remota
       ansible.builtin.command: "id -un"
       register: whoami_result
