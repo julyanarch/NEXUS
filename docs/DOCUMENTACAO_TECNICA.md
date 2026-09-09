@@ -1483,3 +1483,26 @@ isso **não foi convertido** pra `raw`/`script` porque seria uma reescrita bem m
 pra um caso isolado. Nesse servidor específico, o NEXUS serve pra **cadastro + visualização/
 importação de usuários existentes**, não pra gestão completa - suficiente pro propósito de
 demonstração que motivou o cadastro dele.
+
+---
+
+## 58. "Importar usuários existentes" achava 0 usuários no CentOS, mesmo tendo usuários reais no `/etc/passwd`
+
+Mesmo servidor das seções 56/57 (`10.1.255.100`, CentOS 6.9). Depois de cadastrar com sucesso, o
+NEXUS rodou a importação automática e devolveu "0 usuário(s) encontrado(s)" - sem erro, só nenhum
+resultado - enquanto um `cat /etc/passwd` manual no servidor mostrava vários usuários reais.
+
+**Causa raiz:** `discover_existing_users.sh` só considera "usuário de gente" (não conta de sistema/
+serviço) quem tem UID **≥ 1000** - o valor padrão do NEXUS (`config.DISCOVER_MIN_UID`), que segue a
+convenção Debian/Ubuntu (`useradd` cria usuários a partir do UID 1000 nessas distros). **CentOS/RHEL
+usa outra convenção: UID_MIN = 500** por padrão. Usuários criados nesse servidor com `useradd` padrão
+ficam com UID entre 500 e 999 - abaixo do corte fixo de 1000 - e o filtro os descarta silenciosamente,
+sem isso ser um erro (daí "0 encontrados", não uma mensagem de falha).
+
+**Correção:** em vez de um valor fixo vindo só do lado do NEXUS, `discover_existing_users.sh` passou
+a **detectar o `UID_MIN` do próprio servidor**, lendo `/etc/login.defs` nele (`awk '/^UID_MIN/{print
+$2}' /etc/login.defs`) - se encontrar um valor lá, ele prevalece sobre o `min_uid` padrão recebido
+como argumento; se não encontrar (arquivo ausente/atípico), mantém o valor padrão de antes. Isso
+resolve tanto CentOS/RHEL (500) quanto Debian/Ubuntu (1000, que já é o padrão de qualquer forma -
+`login.defs` desses sistemas normalmente já declara UID_MIN=1000, então o comportamento não muda pra
+servidores já cadastrados), sem precisar de um campo de configuração por servidor.
