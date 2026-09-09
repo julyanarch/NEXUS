@@ -17,10 +17,10 @@ def build_status_chart(counts):
     return {"segments": [s for s in segments if s["count"] > 0], "total": total}
 
 
-def build_timeline_chart():
+def build_timeline_chart(server_id=None):
     """Execucoes por dia (sucesso/falha), com alturas em px ja calculadas -
     o template so desenha, sem fazer conta."""
-    days = models.daily_execution_counts(config.TIMELINE_DAYS)
+    days = models.daily_execution_counts(config.TIMELINE_DAYS, server_id)
     max_total = max((d["ok"] + d["failed"] for d in days), default=0) or 1
     max_h = config.TIMELINE_CHART_HEIGHT_PX
 
@@ -43,10 +43,10 @@ def build_timeline_chart():
     }
 
 
-def build_server_chart():
+def build_server_chart(server_id=None):
     """Total de execucoes por servidor (ultimos N dias) - barras de
     magnitude, uma so cor (nao e status)."""
-    rows = models.executions_per_server(config.SERVER_CHART_WINDOW_DAYS)
+    rows = models.executions_per_server(config.SERVER_CHART_WINDOW_DAYS, server_id)
     max_total = max((r["total"] for r in rows), default=0) or 1
     bars = []
     for r in rows:

@@ -502,9 +502,14 @@ def mark_removed_automatically(user_id):
         conn.close()
 
 
-def list_locked_users():
+def list_locked_users(server_id=None):
     conn = get_db()
-    rows = conn.execute(USER_LIST_QUERY + " WHERE mu.status = 'locked'").fetchall()
+    query = USER_LIST_QUERY + " WHERE mu.status = 'locked'"
+    params = []
+    if server_id:
+        query += " AND mu.server_id = ?"
+        params.append(server_id)
+    rows = conn.execute(query, params).fetchall()
     conn.close()
     return rows
 
@@ -635,18 +640,21 @@ def list_distinct_action_log_actions():
     return [r["action"] for r in rows]
 
 
-def daily_execution_counts(days=14):
+def daily_execution_counts(days=14, server_id=None):
     """Execucoes (ok vs falha) por dia, para o grafico de linha do tempo do
     Painel. Sempre retorna exatamente `days` dias (do mais antigo ao mais
     recente), preenchendo com zero os dias sem nenhuma execucao."""
     conn = get_db()
-    rows = conn.execute(
-        """SELECT substr(performed_at, 1, 10) AS day,
+    query = """SELECT substr(performed_at, 1, 10) AS day,
                   SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
                   SUM(CASE WHEN status != 'ok' THEN 1 ELSE 0 END) AS failed_count
-           FROM action_log
-           GROUP BY day"""
-    ).fetchall()
+           FROM action_log"""
+    params = []
+    if server_id:
+        query += " WHERE server_id = ?"
+        params.append(server_id)
+    query += " GROUP BY day"
+    rows = conn.execute(query, params).fetchall()
     conn.close()
 
     by_day = {r["day"]: (r["ok_count"], r["failed_count"]) for r in rows}
@@ -665,21 +673,24 @@ def daily_execution_counts(days=14):
     return result
 
 
-def executions_per_server(days=30):
+def executions_per_server(days=30, server_id=None):
     """Total de execucoes por servidor nos ultimos `days` dias, para o
     grafico de magnitude do Painel. Inclui servidores sem nenhuma execucao
     no periodo (aparecem com contagem zero). Agrega por nome de exibicao
     (sem o sufixo de arquivamento) - senao um servidor decomissionado mais
-    de uma vez aparece como varias barras separadas pro "mesmo" servidor."""
+    de uma vez aparece como varias barras separadas pro "mesmo" servidor.
+    Com server_id, restringe a esse unico servidor (filtro do Painel)."""
     conn = get_db()
-    rows = conn.execute(
-        """SELECT s.name AS server_name, COUNT(al.id) AS total
+    query = """SELECT s.name AS server_name, COUNT(al.id) AS total
            FROM servers s
            LEFT JOIN action_log al
-             ON al.server_id = s.id AND al.performed_at >= datetime('now', ?)
-           GROUP BY s.id""",
-        (f"-{days} days",),
-    ).fetchall()
+             ON al.server_id = s.id AND al.performed_at >= datetime('now', ?)"""
+    params = [f"-{days} days"]
+    if server_id:
+        query += " WHERE s.id = ?"
+        params.append(server_id)
+    query += " GROUP BY s.id"
+    rows = conn.execute(query, params).fetchall()
     conn.close()
 
     merged = {}

@@ -122,20 +122,23 @@ def register_routes(app):
     @app.route("/")
     def dashboard():
         selected_server_id = request.args.get("server_id", type=int)
+        selected_server = models.get_server(selected_server_id) if selected_server_id else None
         counts = models.summary_counts(selected_server_id)
         # Mais urgente primeiro (mais dias bloqueado); quem precisa de
         # revisao manual (sem data de bloqueio conhecida - ver secao 35 da
         # documentacao tecnica) vai pro fim, ja que nao tem dias pra ordenar.
         locked_users = sorted(
-            models.list_locked_users(),
+            models.list_locked_users(selected_server_id),
             key=lambda u: (bool(u["lock_review_needed"]), -(u["days_locked"] or 0)),
         )
-        recent_runs, _ = models.list_recent_runs(limit=10)
+        recent_runs, _ = models.list_recent_runs(
+            limit=10, server=selected_server["name"] if selected_server else None,
+        )
         return render_template(
             "dashboard.html", counts=counts, locked_users=locked_users, recent_runs=recent_runs,
             status_chart=charts.build_status_chart(counts),
-            timeline_chart=charts.build_timeline_chart(),
-            server_chart=charts.build_server_chart(),
+            timeline_chart=charts.build_timeline_chart(selected_server_id),
+            server_chart=charts.build_server_chart(selected_server_id),
             chart_color_magnitude=config.CHART_COLOR_MAGNITUDE,
             chart_color_good=config.CHART_COLOR_GOOD,
             chart_color_critical=config.CHART_COLOR_CRITICAL,
