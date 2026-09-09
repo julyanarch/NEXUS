@@ -498,19 +498,30 @@ def list_locked_users():
     return rows
 
 
-def summary_counts():
+def summary_counts(server_id=None):
+    """Contagens dos 4 cartoes do Painel. Sem server_id, soma todos os
+    servidores (comportamento de sempre); com server_id, restringe aos
+    usuarios geridos daquele servidor - pro filtro "Servidor" do Painel."""
     conn = get_db()
-    rows = conn.execute("SELECT status, COUNT(*) AS c FROM managed_users GROUP BY status").fetchall()
+    query = "SELECT status, COUNT(*) AS c FROM managed_users"
+    params = []
+    if server_id:
+        query += " WHERE server_id = ?"
+        params.append(server_id)
+    query += " GROUP BY status"
+    rows = conn.execute(query, params).fetchall()
     counts = {"active": 0, "locked": 0, "removed": 0}
     for row in rows:
         counts[row["status"]] = row["c"]
 
-    expiring = conn.execute(
-        """SELECT COUNT(*) AS c FROM managed_users
+    expiring_query = """SELECT COUNT(*) AS c FROM managed_users
            WHERE status='locked'
-             AND CAST((julianday('now') - julianday(locked_at)) AS INTEGER) >= ?""",
-        (config.LOCK_WARNING_DAYS,),
-    ).fetchone()["c"]
+             AND CAST((julianday('now') - julianday(locked_at)) AS INTEGER) >= ?"""
+    expiring_params = [config.LOCK_WARNING_DAYS]
+    if server_id:
+        expiring_query += " AND server_id = ?"
+        expiring_params.append(server_id)
+    expiring = conn.execute(expiring_query, expiring_params).fetchone()["c"]
     conn.close()
     counts["expiring_soon"] = expiring
     return counts

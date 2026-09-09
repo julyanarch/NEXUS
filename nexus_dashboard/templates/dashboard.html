@@ -2,7 +2,17 @@
 {% block content %}
 <div class="page-header">
   <h1>Painel</h1>
-  <a class="btn" href="{{ url_for('new_action_form') }}">+ Nova ação</a>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <form method="get" style="margin:0;">
+      <select name="server_id" onchange="this.form.submit()">
+        <option value="">Todos os servidores</option>
+        {% for s in servers %}
+        <option value="{{ s.id }}" {{ 'selected' if selected_server_id == s.id }}>{{ s.name | clean_server_name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <a class="btn" href="{{ url_for('new_action_form') }}">+ Nova ação</a>
+  </div>
 </div>
 
 <div class="summary-grid">

@@ -121,7 +121,8 @@ def register_routes(app):
 
     @app.route("/")
     def dashboard():
-        counts = models.summary_counts()
+        selected_server_id = request.args.get("server_id", type=int)
+        counts = models.summary_counts(selected_server_id)
         # Mais urgente primeiro (mais dias bloqueado); quem precisa de
         # revisao manual (sem data de bloqueio conhecida - ver secao 35 da
         # documentacao tecnica) vai pro fim, ja que nao tem dias pra ordenar.
@@ -138,6 +139,8 @@ def register_routes(app):
             chart_color_magnitude=config.CHART_COLOR_MAGNITUDE,
             chart_color_good=config.CHART_COLOR_GOOD,
             chart_color_critical=config.CHART_COLOR_CRITICAL,
+            servers=models.list_servers(),
+            selected_server_id=selected_server_id,
         )
 
     # ---------------------------------------------------------- operador --
