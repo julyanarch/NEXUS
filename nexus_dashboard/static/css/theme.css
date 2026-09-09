@@ -191,6 +191,11 @@ a:hover { text-decoration: underline; }
 .summary-card .value { font-size: 2rem; font-weight: 700; color: #fff; }
 .summary-card .label { color: var(--text-muted); font-size: 0.85rem; }
 
+/* Cartoes-resumo do Painel viraram <a> (levam pra Usuarios ja filtrado) -
+   remove estilo padrao de link e da uma pista visual de que e clicavel. */
+.summary-card-link { display: block; text-decoration: none; cursor: pointer; transition: border-color .15s; }
+.summary-card-link:hover { border-color: var(--purple); }
+
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); font-size: 0.85rem; white-space: nowrap; }
 th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; }

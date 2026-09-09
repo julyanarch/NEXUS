@@ -16,22 +16,22 @@
 </div>
 
 <div class="summary-grid">
-  <div class="summary-card">
+  <a class="summary-card summary-card-link" href="{{ url_for('list_users', status='active', server_id=selected_server_id) }}">
     <div class="value">{{ counts.active }}</div>
     <div class="label">Usuários ativos</div>
-  </div>
-  <div class="summary-card">
+  </a>
+  <a class="summary-card summary-card-link" href="{{ url_for('list_users', status='locked', server_id=selected_server_id) }}">
     <div class="value">{{ counts.locked }}</div>
     <div class="label">Bloqueados</div>
-  </div>
-  <div class="summary-card">
+  </a>
+  <a class="summary-card summary-card-link" href="{{ url_for('list_users', expiring=1, server_id=selected_server_id) }}">
     <div class="value">{{ counts.expiring_soon }}</div>
     <div class="label">Expirando em breve (&ge; {{ lock_warning_days }}d)</div>
-  </div>
-  <div class="summary-card">
+  </a>
+  <a class="summary-card summary-card-link" href="{{ url_for('list_users', status='removed', server_id=selected_server_id) }}">
     <div class="value">{{ counts.removed }}</div>
     <div class="label">Removidos</div>
-  </div>
+  </a>
 </div>
 
 {% if servers_missing_vault %}

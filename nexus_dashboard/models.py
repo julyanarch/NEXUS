@@ -312,14 +312,25 @@ USER_LIST_QUERY = """
 """
 
 
-def list_users(status=None, search=None):
+def list_users(status=None, search=None, server_id=None, expiring_only=False):
     conn = get_db()
     query = USER_LIST_QUERY
     clauses = []
     params = []
-    if status:
+    if expiring_only:
+        # Mesmo corte usado no cartao "Expirando em breve" do Painel -
+        # subconjunto de bloqueados, nao um status proprio no banco.
+        clauses.append(
+            "(mu.status = 'locked' AND "
+            "CAST((julianday('now') - julianday(mu.locked_at)) AS INTEGER) >= ?)"
+        )
+        params.append(config.LOCK_WARNING_DAYS)
+    elif status:
         clauses.append("mu.status = ?")
         params.append(status)
+    if server_id:
+        clauses.append("mu.server_id = ?")
+        params.append(server_id)
     if search:
         clauses.append("(mu.username LIKE ? OR mu.ticket LIKE ? OR s.ssh_host LIKE ?)")
         params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])

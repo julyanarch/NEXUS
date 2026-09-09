@@ -635,7 +635,16 @@ def register_routes(app):
     def list_users():
         status = request.args.get("status") or None
         search = request.args.get("q") or None
-        return render_template("users/list.html", users=models.list_users(status, search), status=status, search=search or "")
+        server_id = request.args.get("server_id", type=int)
+        expiring_only = request.args.get("expiring") == "1"
+        return render_template(
+            "users/list.html",
+            users=models.list_users(status, search, server_id, expiring_only),
+            status=status, search=search or "",
+            servers=models.list_servers(),
+            selected_server_id=server_id,
+            expiring_only=expiring_only,
+        )
 
     @app.route("/users/<int:user_id>")
     def user_detail(user_id):

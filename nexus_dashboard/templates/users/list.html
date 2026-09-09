@@ -6,14 +6,29 @@
 </div>
 
 <div class="card">
+  {% if expiring_only %}
+  <p class="muted" style="margin-top:0;">
+    Mostrando bloqueados há ≥ {{ lock_warning_days }} dias (expirando em breve) - vindo do cartão do
+    Painel. Mexer nos filtros abaixo sai dessa visão.
+  </p>
+  {% endif %}
   <form method="get" class="form-grid" style="align-items:end;">
     <div class="form-group">
       <label>Status</label>
       <select name="status" onchange="this.form.submit()">
-        <option value="" {{ 'selected' if not status }}>Todos</option>
+        <option value="" {{ 'selected' if not status and not expiring_only }}>Todos</option>
         <option value="active" {{ 'selected' if status == 'active' }}>Ativos</option>
-        <option value="locked" {{ 'selected' if status == 'locked' }}>Bloqueados</option>
+        <option value="locked" {{ 'selected' if status == 'locked' or expiring_only }}>Bloqueados</option>
         <option value="removed" {{ 'selected' if status == 'removed' }}>Removidos</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Servidor</label>
+      <select name="server_id" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for s in servers %}
+        <option value="{{ s.id }}" {{ 'selected' if selected_server_id == s.id }}>{{ s.name | clean_server_name }}</option>
+        {% endfor %}
       </select>
     </div>
     <div class="form-group">
