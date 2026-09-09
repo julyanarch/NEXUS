@@ -1440,3 +1440,46 @@ ansible_python_interpreter: /usr/bin/python
 ```
 O nome do arquivo/pasta precisa bater exatamente com o campo "Nome" usado no cadastro (é a chave do
 host no inventário).
+
+---
+
+## 57. Python 2.6 é velho demais até pra rodar módulo Ansible (não só o interpretador) - `raw`/`script` como exceção
+
+Continuação direta da seção 56, mesmo servidor (`10.1.255.100`, `BR-CN-CTN-01`). Com o
+`ansible_python_interpreter` corrigido, o erro mudou - o SSH e o interpretador já funcionavam, mas:
+
+```
+"Verificar conectividade e identidade remota" falhou em BR-CN-CTN-01:
+Module result deserialization failed: No start of json char found)
+```
+
+**Causa raiz:** todo módulo Ansible "normal" (`command`, `shell`, `user`, `copy`, etc.) roda como um
+programa Python remoto que devolve o resultado em **JSON** - e o próprio código desses módulos
+(`AnsibleModule` e afins) usa recursos de sintaxe que só existem a partir do Python 2.7 (ex.: dict/
+set comprehensions). O `10.1.255.100` só tem Python **2.6** (2008) - o módulo quebra ao rodar lá
+(erro de sintaxe Python do lado remoto) e o que volta não é JSON válido. Ou seja: não é só achar o
+caminho certo do interpretador (seção 56) - esse servidor é velho demais pro **próprio código dos
+módulos Ansible modernos rodarem**, independente de qual Python for apontado.
+
+**Decisão (proposital, não é "deixar perfeito"):** não faz sentido reescrever toda a automação de
+criação/bloqueio/remoção de usuário (`sanitize_users.yml`, que usa `copy`, `command`, `fetch`, todos
+dependentes de módulo) pra funcionar num Python de 2008 - isso é fora de escopo. A necessidade real
+era só **cadastrar o servidor e mostrar usuários que já existem nele** (demonstração), sem exigir
+que as ações de criar/bloquear/remover funcionem nesse host específico. Pra isso, dois módulos
+Ansible **não passam pelo `AnsibleModule`/JSON** e por isso não dependem de Python no servidor
+remoto nenhum:
+
+- **`ansible.builtin.raw`** - manda o comando puro por SSH, sem módulo nenhum. Usado no
+  `test_connection.yml` no lugar de `command` (só precisa confirmar login/identidade).
+- **`ansible.builtin.script`** - copia um script local e executa direto por SSH (como `raw`, mas
+  pra um arquivo inteiro em vez de uma linha). Usado no `discover_existing_users.yml` no lugar de
+  `shell` - o script (antes inline via Jinja) virou um arquivo próprio,
+  `nexus_dashboard/ansible/files/discover_existing_users.sh`, recebendo `min_uid` como argumento
+  (`$1`) em vez de template Jinja embutido.
+
+**O que continua não funcionando nesse host, de propósito:** criar/bloquear/remover usuário via
+`sanitize_users.yml` continua dependendo de módulos completos (`copy`, `command` remoto, `fetch`) -
+isso **não foi convertido** pra `raw`/`script` porque seria uma reescrita bem maior e mais arriscada
+pra um caso isolado. Nesse servidor específico, o NEXUS serve pra **cadastro + visualização/
+importação de usuários existentes**, não pra gestão completa - suficiente pro propósito de
+demonstração que motivou o cadastro dele.

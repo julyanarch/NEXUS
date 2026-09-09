@@ -30,8 +30,14 @@
         dir: "{{ host_vars_root }}/{{ inventory_hostname }}"
       when: host_vars_stat.stat.exists
 
+    # "raw" nao passa pelo AnsibleModule (nao exige um Python funcional no
+    # servidor remoto, so um shell via SSH) - diferente de "command"/"shell",
+    # funciona mesmo em servidores antigos demais pra rodar o boilerplate dos
+    # modulos Ansible modernos (ex.: Python 2.6, onde o modulo quebra com
+    # "Module result deserialization failed" mesmo com o interpretador certo
+    # configurado - ver secao 57 da documentacao tecnica).
     - name: Verificar conectividade e identidade remota
-      ansible.builtin.command: "id -un"
+      ansible.builtin.raw: "id -un"
       register: whoami_result
       changed_when: false
 

@@ -21,6 +21,7 @@ PLAYBOOK_CHECK_FILE = os.path.join(config.PLAYBOOKS_DIR, "check_home_file.yml")
 PLAYBOOK_DISCOVER_USERS = os.path.join(config.PLAYBOOKS_DIR, "discover_existing_users.yml")
 
 LEGACY_SCRIPT_COPY = os.path.join(config.ANSIBLE_DIR, "files", "nexus_sanitize_users.sh")
+DISCOVER_SCRIPT_PATH = os.path.join(config.ANSIBLE_DIR, "files", "discover_existing_users.sh")
 
 SECRET_LINE_PATTERN = re.compile(r"(pass(wo?rd)?|senha|secret|token|chave)", re.IGNORECASE)
 ANSI_ESCAPE_PATTERN = re.compile(r"\x1b\[[0-9;]*m")
@@ -360,6 +361,7 @@ def discover_existing_users(target_host, min_uid=None):
         "target_host": target_host,
         "min_uid": min_uid if min_uid is not None else config.DISCOVER_MIN_UID,
         "host_vars_root": config.HOST_VARS_DIR,
+        "discover_script_local_path": DISCOVER_SCRIPT_PATH,
     })
 
     if not result["success"]:
