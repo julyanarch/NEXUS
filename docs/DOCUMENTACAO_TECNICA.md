@@ -161,6 +161,32 @@ etc.) iriam para o Python do sistema inteiro da VM.
 3. Configurar a senha de sudo desse servidor (botão "senha sudo" na lista de Servidores).
 4. Testar conexão.
 
+### Autorizando um servidor sem rodar `ssh-copy-id` a partir da ponte
+
+`ssh-copy-id` faz só uma coisa: pega a chave **pública** já existente na ponte e cola em
+`~/.ssh/authorized_keys` do usuário remoto — mas exige autenticar por senha nesse servidor a partir
+da ponte primeiro. Se isso não é viável (ou não é desejado), o mesmo resultado é obtido colando a
+chave manualmente, direto no servidor de destino, sem a ponte precisar se autenticar por senha:
+
+```bash
+# 1. Na ponte, ler a chave pública já existente (não é segredo):
+cat ~/.ssh/id_ed25519.pub
+
+# 2. No servidor novo, como o usuário que vai receber acesso (via console, etc.):
+mkdir -p ~/.ssh && chmod 700 ~/.ssh
+echo "<conteúdo colado da chave pública>" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+**Não gerar uma chave nova para esse servidor** — o padrão do projeto é uma única chave na ponte,
+reaproveitada em todo servidor novo (ver seção 2). Gerar uma chave por servidor quebra essa
+convenção; a única exceção documentada é servidor com OpenSSH antigo demais para Ed25519 (seção 55,
+"Servidor antigo demais até para a chave de usuário (Ed25519)"), que usa a RSA extra já gerada para
+esse caso.
+
+Esse passo só resolve a camada 1 (login SSH); o cadastro do servidor na interface (passo 2 acima) e
+a senha de sudo (passo 3) continuam sendo necessários do mesmo jeito.
+
 ---
 
 ## 7. O que o Painel mostra
