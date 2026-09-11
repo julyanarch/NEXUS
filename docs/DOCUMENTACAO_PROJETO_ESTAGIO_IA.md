@@ -32,7 +32,7 @@ Este documento apresenta o projeto NEXUS, uma solução que aplica automação o
 6. BENEFÍCIOS ESPERADOS
 7. RISCOS E CONTROLES
 8. PLANO DE IMPLANTAÇÃO SIMPLIFICADO
-9. TRABALHOS FUTUROS: SUPORTE A SERVIDORES WINDOWS
+9. TRABALHOS FUTUROS: SUPORTE A SERVIDORES WINDOWS E A DISTRIBUIÇÕES LINUX ANTIGAS
 10. CONCLUSÃO
 APÊNDICE A — Arquitetura Técnica Detalhada
 APÊNDICE B — Decisões de Arquitetura e Alternativas Consideradas
@@ -246,15 +246,17 @@ Essa frase é montada dinamicamente a partir de `LOCK_MAX_DAYS = 90` e `LOCK_WAR
 
 ---
 
-## 9 TRABALHOS FUTUROS: SUPORTE A SERVIDORES WINDOWS
+## 9 TRABALHOS FUTUROS: SUPORTE A SERVIDORES WINDOWS E A DISTRIBUIÇÕES LINUX ANTIGAS
 
 > **Natureza deste item.** O conteúdo desta seção é uma proposta de evolução — uma ideia de arquitetura a ser avaliada e amadurecida — e **não** faz parte do escopo entregue neste projeto. Está registrado aqui para orientar decisões técnicas quando essa expansão for priorizada em uma fase futura.
 
-### 9.1 Motivação
+### 9.1 Suporte a servidores Windows
+
+### 9.1.1 Motivação
 
 O ambiente de infraestrutura da empresa não é composto só por servidores Linux — há (ou pode haver, dependendo da área) servidores Windows com o mesmo tipo de necessidade: contas de usuário criadas no onboarding, bloqueadas/removidas no offboarding, e o mesmo risco de contas esquecidas sem revisão. Hoje esse universo Windows não é coberto pelo NEXUS. A ideia é estender o mesmo conceito — painel único, execução orquestrada, auditoria centralizada e um resumo gerado por IA local — para contas Windows, evitando manter duas ferramentas completamente separadas para o mesmo tipo de processo.
 
-### 9.2 Desafios técnicos específicos do Windows
+### 9.1.2 Desafios técnicos específicos do Windows
 
 A automação em Windows não é uma simples adaptação do que já existe — o mecanismo de execução remota é outro:
 
@@ -264,7 +266,7 @@ A automação em Windows não é uma simples adaptação do que já existe — o
 - **Escopo de identidade a decidir.** Servidores Windows corporativos, na prática, costumam gerenciar contas via **Active Directory** (domínio), não contas locais por servidor — diferente do modelo atual do NEXUS (local por servidor). Essa é uma decisão de arquitetura relevante a se tomar antes de iniciar: gerenciar contas locais isoladas por servidor Windows, ou integrar com o Active Directory da empresa (mais próximo da realidade corporativa, porém com superfície de impacto maior).
 - **Sem equivalente direto ao `bash_history`.** A coleta de histórico de comandos (hoje best-effort, via `~/.bash_history`) não tem paralelo direto no Windows — exigiria habilitar auditoria de linha de comando (Log de Eventos do Windows, *Event ID 4688*, com *Process Creation Command Line Auditing* ativado via GPO) nos servidores geridos **antes** de qualquer coleta funcionar, o que é uma configuração prévia a ser feita no ambiente, não algo que o NEXUS resolve sozinho.
 
-### 9.3 Proposta de arquitetura (ideia)
+### 9.1.3 Proposta de arquitetura (ideia)
 
 A proposta é **não recriar o NEXUS do zero para Windows**, e sim estender a base já existente:
 
@@ -274,7 +276,7 @@ A proposta é **não recriar o NEXUS do zero para Windows**, e sim estender a ba
 - **Vault:** continuar usando Ansible Vault, mas armazenando a credencial da conta de serviço com permissão delegada (WinRM), no mesmo padrão de segredo por servidor (ou por domínio, se a integração com Active Directory for adotada) já usado hoje.
 - **Camada de IA (`ai_engine.py`):** não exigiria reescrita conceitual — ela já opera sobre fatos abstratos (status, dias bloqueado, grupos), independentes de sistema operacional. Precisaria apenas de um coletor de fatos equivalente para Windows (ex.: `Get-LocalUser`/consulta ao Active Directory no lugar do `discover_existing_users.yml` atual).
 
-### 9.4 Tecnologias candidatas (a avaliar)
+### 9.1.4 Tecnologias candidatas (a avaliar)
 
 | Opção | Descrição | Observação |
 |---|---|---|
@@ -283,16 +285,42 @@ A proposta é **não recriar o NEXUS do zero para Windows**, e sim estender a ba
 | `Microsoft.AD.ADUser`/módulo `ActiveDirectory` (para ambientes de domínio) | Gestão de contas centralizada no Active Directory, em vez de contas locais por servidor | Mais alinhado à realidade corporativa, mas exige decisão prévia de escopo (seção 9.2) |
 | Listener WinRM sobre HTTPS (certificado) | Alternativa mais segura ao HTTP + NTLM | Recomendado por padrão de segurança, evita tráfego de credencial menos protegido na rede interna |
 
-### 9.5 Pontos em aberto (decisões necessárias antes de iniciar)
+### 9.1.5 Pontos em aberto (decisões necessárias antes de iniciar)
 
 - Escopo: contas locais por servidor Windows autônomo, ou contas de domínio via Active Directory?
 - Qual conta de serviço terá a permissão delegada necessária, e como essa credencial será protegida e com que nível de privilégio mínimo (princípio do menor privilégio)?
 - Como endereçar a lacuna do histórico de comandos (item mais dependente de configuração prévia do ambiente, fora do controle direto do NEXUS)?
 - Vale unificar tudo em um único painel multiplataforma (Linux + Windows), ou manter dashboards separados por tecnologia, com auditoria consolidada por trás?
 
-### 9.6 Status
+### 9.2 Suporte a distribuições Linux antigas (Python desatualizado)
 
-Item de evolução do roadmap, ainda **não iniciado** e fora do escopo atual entregue. Registrado nesta documentação para servir de ponto de partida técnico quando a expansão para servidores Windows for priorizada pela área.
+### 9.2.1 Motivação e situação atual
+
+Nem todo servidor Linux do parque da empresa roda uma distribuição recente. Durante o cadastro real de um servidor de produção mais antigo — `BR-CN-CTN-01` (`10.1.255.100`), CentOS 6.9, com Python 2.6.6 —, o NEXUS esbarrou em uma limitação técnica de fundo: os módulos completos do Ansible (`copy`, `command` remoto, `fetch`, entre outros, usados por `nexus_sanitize_users.sh` via Ansible) rodam, do lado do servidor gerido, como um programa Python que devolve o resultado em formato JSON — e o próprio código desses módulos usa recursos de sintaxe que só existem a partir do Python 2.7 (por exemplo, *dict/set comprehensions*). Em um servidor com Python 2.6 (lançado em 2008), esses módulos falham independentemente de qual caminho de interpretador for configurado — não é um problema de "achar o Python certo", é o próprio código dos módulos modernos que não roda ali.
+
+**Solução aplicada nesse caso (contorno, não correção definitiva):** dois módulos do Ansible não passam pelo mecanismo de serialização em JSON e por isso não dependem de nenhuma versão de Python no servidor remoto — `ansible.builtin.raw` (envia o comando puro por SSH, sem módulo nenhum) e `ansible.builtin.script` (copia e executa um script local inteiro, também sem depender do módulo padrão). Esses dois módulos foram usados para viabilizar **apenas** o teste de conectividade e a importação/leitura de usuários já existentes nesse servidor — não para as ações de gestão completa.
+
+**Estado atual, por causa disso:** o servidor `10.1.255.100` está cadastrado e operando no NEXUS **somente para fins de análise e demonstração** — visualização e importação dos usuários que já existem nele. Nenhuma ação de criação, bloqueio, remoção ou purga de usuário está disponível para esse servidor, porque essas ações dependem dos módulos Ansible completos, que não funcionam nesse Python antigo. Essa é uma limitação conhecida e proposital, não um defeito a ser corrigido no escopo atual.
+
+### 9.2.2 Proposta de evolução (ideia)
+
+Para que esse tipo de servidor deixe de ser apenas "somente leitura" e passe a ter o mesmo nível de gestão completa dos demais, o caminho técnico já identificado é: instalar, no próprio servidor antigo, uma versão de Python 2.7 (ou superior) **de forma isolada** — por exemplo, compilada a partir do código-fonte e instalada com `make altinstall`, mecanismo que coexiste com o Python de sistema já existente sem sobrescrevê-lo ou quebrar outros usos daquele Python pelo próprio sistema operacional — e então apontar o NEXUS para esse novo interpretador via `ansible_python_interpreter` (mecanismo de `host_vars` por servidor que o NEXUS já utiliza para outros ajustes). Com isso, as playbooks de gestão de usuário passariam a funcionar nesse servidor sem exigir nenhuma reescrita de código adicional.
+
+Esse tipo de instalação em um servidor de produção depende de aprovação prévia da liderança responsável por aquele ambiente — não é uma decisão puramente técnica —, e essa autorização, no momento em que esta seção foi redigida, ainda está pendente.
+
+### 9.2.3 Por que isso é um trabalho futuro do roadmap, e não um ajuste pontual
+
+O caso do `10.1.255.100` não é único: qualquer distribuição Linux antiga o suficiente (Python anterior à versão 2.7, incluindo qualquer versão da série 2.x, hoje encerrada/*end-of-life*) teria a mesma limitação ao ser cadastrada no NEXUS. Por isso, o item proposto para o roadmap não é apenas "resolver este servidor", e sim avaliar um caminho padronizado — por exemplo, detectar automaticamente a versão de Python do servidor no momento do cadastro, e orientar (ou futuramente automatizar) a disponibilização de um interpretador compatível quando necessário — para que o NEXUS funcione **de forma completa (100%) em qualquer distribuição Linux, independentemente de quão antiga ela seja**, e não apenas nas distribuições mais recentes já cobertas hoje.
+
+### 9.2.4 Pontos em aberto (decisões necessárias antes de iniciar)
+
+- Autorização formal para instalar um interpretador Python adicional em servidores de produção antigos (decisão que cabe à liderança da área responsável por cada ambiente, não ao NEXUS).
+- Vale automatizar essa instalação via uma playbook própria do NEXUS, ou deixá-la como um passo de preparação manual documentado (semelhante ao `ssh-copy-id` hoje), com o NEXUS apenas detectando e orientando?
+- Como detectar de forma confiável, no momento do cadastro do servidor, que a versão de Python instalada é incompatível — para orientar o operador antes mesmo da primeira tentativa de ação, em vez de o erro aparecer só na execução?
+
+### 9.3 Status
+
+Ambos os itens desta seção — suporte a servidores Windows e suporte pleno a distribuições Linux antigas — são propostas de evolução do roadmap, ainda **não iniciadas** e fora do escopo atual entregue. No fundo, tratam da mesma pergunta: até onde o NEXUS deve se estender para cobrir toda a heterogeneidade real do parque de servidores da empresa (sistemas operacionais diferentes, e também versões de Linux muito antigas). Ficam registrados nesta documentação como ponto de partida técnico para quando cada uma dessas expansões for priorizada pela área. Enquanto isso, o `10.1.255.100` permanece cadastrado e operando normalmente dentro do seu propósito atual (demonstração/leitura), sem qualquer ação de gestão disponível até que o item da seção 9.2 seja endereçado.
 
 ---
 
