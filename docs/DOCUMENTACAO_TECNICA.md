@@ -1506,3 +1506,46 @@ como argumento; se não encontrar (arquivo ausente/atípico), mantém o valor pa
 resolve tanto CentOS/RHEL (500) quanto Debian/Ubuntu (1000, que já é o padrão de qualquer forma -
 `login.defs` desses sistemas normalmente já declara UID_MIN=1000, então o comportamento não muda pra
 servidores já cadastrados), sem precisar de um campo de configuração por servidor.
+
+---
+
+## 59. Melhoria futura: suporte pleno a distribuições Linux antigas (Python desatualizado)
+
+**Situação atual (status hoje, não é bug):** o servidor `BR-CN-CTN-01` (`10.1.255.100`, CentOS 6.9,
+Python 2.6.6 - seções 56 a 58) está cadastrado no NEXUS **apenas para análise e demonstração** -
+teste de conectividade e importação/visualização dos usuários que já existem nele. **Nenhuma ação de
+gestão** (criar, bloquear, remover ou purgar usuário via `sanitize_users.yml`) funciona nesse
+servidor, e isso é proposital: essas ações dependem de módulos Ansible completos (`copy`, `command`
+remoto, `fetch`), cujo próprio código só roda em Python 2.7+. Como o servidor só tem Python 2.6
+(2008), esses módulos quebram nele independentemente de qual interpretador for apontado em
+`ansible_python_interpreter` - por isso a seção 57 usou `raw`/`script` apenas para conectividade e
+leitura, sem estender isso à gestão completa (seria uma reescrita maior, fora do escopo atual).
+
+**O que falta pra esse servidor (e outros iguais) funcionarem por completo:** instalar uma versão
+mais nova de Python nesse tipo de servidor antigo - por exemplo, compilada a partir do código-fonte
+e instalada de forma isolada (`make altinstall`, que não sobrescreve nem interfere no Python 2.6 já
+existente no sistema) - e então apontar `ansible_python_interpreter`, via `host_vars` (mecanismo que
+o NEXUS já carrega - seção 56), pra esse novo interpretador. Com isso, `sanitize_users.yml` passaria
+a funcionar nesse servidor sem precisar de nenhuma mudança de código adicional. Esse passo depende de
+autorização (instalar software novo em um servidor de produção antigo não é uma decisão técnica
+isolada) e, no momento em que esta seção foi escrita, essa autorização ainda estava pendente.
+
+**Por que isso é um item de melhoria futura, e não um ajuste pontual:** o problema não é exclusivo
+desse servidor - qualquer distribuição Linux antiga o suficiente (Python < 2.7, ou mesmo Python 2.x
+de forma geral, já end-of-life) teria a mesma limitação ao ser cadastrada no NEXUS. Faz sentido
+tratar isso como uma frente de evolução do projeto: avaliar um caminho padronizado (ex.: detectar a
+versão de Python do servidor no cadastro, e orientar ou automatizar a instalação de um interpretador
+compatível quando necessário) para que o NEXUS funcione **100% em qualquer distribuição Linux,
+independentemente de quão antiga ela seja** - hoje a ferramenta cobre esse cenário apenas de forma
+parcial (cadastro + leitura), por design, e não por limitação definitiva de arquitetura.
+
+Esse item fica registrado, junto com o suporte a servidores Windows (avaliado em detalhe na
+documentação formal do projeto, `DOCUMENTACAO_PROJETO_ESTAGIO_IA.md`, seção 9), como **trabalho
+futuro do roadmap do NEXUS** - ambos são, no fundo, a mesma pergunta: até onde o NEXUS deve se
+estender para cobrir toda a heterogeneidade real do parque de servidores da empresa (sistemas
+operacionais diferentes, e agora também versões de Linux muito antigas). Nenhum dos dois foi
+iniciado - ambos estão registrados aqui como ponto de partida técnico para quando forem priorizados.
+
+**Status:** não iniciado, fora do escopo atual entregue. O servidor `10.1.255.100` continua
+cadastrado e operando normalmente dentro do seu propósito atual (demonstração/leitura), sem qualquer
+ação de gestão disponível para ele até que esse trabalho futuro seja endereçado.
