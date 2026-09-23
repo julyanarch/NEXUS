@@ -4,6 +4,7 @@
 
 <div class="card">
   <form method="post" data-confirm="Confirmar execução desta ação?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-grid">
       <div class="form-group">
         <label>Nome / usuário Linux</label>

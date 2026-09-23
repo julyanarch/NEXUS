@@ -5,6 +5,7 @@
   <div>
     <form style="display:inline" method="post" action="{{ url_for('collect_history', user_id=user.id) }}"
           title="Conecta no servidor agora e le o ~/.bash_history desse usuario (best-effort - pode estar vazio, incompleto ou desativado). Cada clique guarda uma nova coleta, sem apagar as anteriores.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button class="btn btn-outline" type="submit">Coletar histórico de comandos</button>
     </form>
     {% if insights.commands.status == 'ok' and insights.commands.lines %}
@@ -15,6 +16,7 @@
     <form style="display:inline" method="post" action="{{ url_for('force_removal', user_id=user.id) }}"
           data-confirm="Remover {{ user.username }} agora do servidor {{ user.server_name }}?"
           title="Executa a remocao (userdel) agora, sem esperar os {{ lock_max_days }} dias de bloqueio ate a remocao automatica.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button class="btn btn-danger" type="submit">Forçar remoção agora</button>
     </form>
     {% endif %}
@@ -47,6 +49,7 @@
     </div>
     <form method="post" action="{{ url_for('confirm_lock', user_id=user.id) }}" style="margin-top:8px;"
           data-confirm="Iniciar a contagem de {{ lock_max_days }} dias a partir de agora pra {{ user.username }}?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <button class="btn btn-sm btn-outline" type="submit">Confirmar e iniciar contagem agora</button>
     </form>
   </div>
@@ -96,6 +99,7 @@
   <h3 style="margin-top:0;">Verificar arquivo</h3>
   <p class="muted">Confere no servidor se um arquivo ou pasta existe.</p>
   <form method="post" action="{{ url_for('check_home_file', user_id=user.id) }}" class="form-grid" style="align-items:end;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
       <label>Caminho (relativo à home, ou completo começando com /)</label>
       <input type="text" name="file_path" placeholder="ex.: relatorio.pdf ou /var/log/app.log" required>

@@ -95,6 +95,7 @@
             <a class="btn btn-sm btn-outline" href="{{ url_for('edit_server', server_id=s.id) }}">editar</a>
 
             <form method="post" action="{{ url_for('test_server', server_id=s.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button class="btn btn-sm" type="submit">testar conexão</button>
             </form>
 
@@ -105,22 +106,26 @@
             {% endif %}
 
             <form method="post" action="{{ url_for('detect_server_sudo', server_id=s.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button class="btn btn-sm btn-outline" type="submit" title="Testa de novo, via sudo -n, se esse servidor pede senha de sudo">detectar</button>
             </form>
 
             <form method="post" action="{{ url_for('toggle_server', server_id=s.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button class="btn btn-sm btn-outline" type="submit">{{ 'desabilitar' if s.enabled else 'habilitar' }}</button>
             </form>
 
             {% if has_history[s.id] %}
             <form method="post" action="{{ url_for('delete_server', server_id=s.id) }}"
                   data-prompt-reason='Este servidor tem histórico de usuários/execuções. Informe o motivo da exclusão (ex.: descomissionamento de máquina, servidor substituído):'>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="reason" class="js-delete-reason">
               <button class="btn btn-sm btn-danger" type="submit" title="Tem histórico - vai pedir o motivo e manter registro para auditoria">excluir</button>
             </form>
             {% else %}
             <form method="post" action="{{ url_for('delete_server', server_id=s.id) }}"
                   data-confirm='Excluir "{{ s.name }}" definitivamente?'>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button class="btn btn-sm btn-danger" type="submit">excluir</button>
             </form>
             {% endif %}

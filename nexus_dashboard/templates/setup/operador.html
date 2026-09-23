@@ -4,6 +4,7 @@
 <div class="card" style="max-width:420px;">
   <p class="muted">Sem login/senha — apenas para registrar quem executou cada ação nos relatórios de auditoria.</p>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
       <label>Seu nome</label>
       <input type="text" name="operator_name" required autofocus>

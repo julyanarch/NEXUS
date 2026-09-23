@@ -1,4 +1,5 @@
 import os
+import secrets
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -78,7 +79,11 @@ RUNS_PER_PAGE = 25
 # distros Linux.
 DISCOVER_MIN_UID = 1000
 
-SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET", "nexus-dashboard-dev-secret")
+# Em producao, defina NEXUS_DASHBOARD_SECRET num valor fixo (senao a sessao
+# de cada operador e invalidada a cada reinicio do processo); sem a variavel
+# definida, gera uma chave aleatoria por processo em vez de usar um valor
+# fixo conhecido no codigo-fonte.
+SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET") or secrets.token_hex(32)
 
 # Depois de quanto tempo sem trocar a identificacao de operador (tela
 # "Identificar operador") a sessao e considerada "velha demais" e a app pede

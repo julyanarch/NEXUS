@@ -612,9 +612,12 @@ def list_recent_runs(limit=100, offset=0, server=None, username=None, action=Non
         params.append(f"%{performed_by}%")
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
 
-    total = conn.execute(f"SELECT COUNT(*) AS c {query}{where}", params).fetchone()["c"]
+    # Concatenacao simples (nao f-string) de propósito: "query"/"where" so
+    # contem trechos de SQL fixos no codigo (nomes de coluna, operadores) -
+    # todo valor vindo de fora vai em "params", ligado via "?" (parametrizado).
+    total = conn.execute("SELECT COUNT(*) AS c " + query + where, params).fetchone()["c"]
     rows = conn.execute(
-        f"SELECT al.*, s.name AS server_name {query}{where} ORDER BY al.performed_at DESC LIMIT ? OFFSET ?",
+        "SELECT al.*, s.name AS server_name " + query + where + " ORDER BY al.performed_at DESC LIMIT ? OFFSET ?",
         params + [limit, offset],
     ).fetchall()
     conn.close()

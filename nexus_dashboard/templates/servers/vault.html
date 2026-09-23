@@ -15,6 +15,7 @@
     (<code>ssh-copy-id</code>), como descrito no README original do projeto.
   </p>
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
       <label>Senha de sudo de {{ server.ssh_user }}@{{ server.name }}</label>
       <input type="password" name="become_password" required>

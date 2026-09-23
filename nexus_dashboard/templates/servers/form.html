@@ -4,6 +4,7 @@
 
 <div class="card" style="max-width:560px;">
   <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
       <label>Nome</label>
       <input type="text" name="name" value="{{ server.name if server else '' }}" required>
@@ -63,6 +64,7 @@
     da última importação.
   </p>
   <form method="post" action="{{ url_for('discover_server_users', server_id=server.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button class="btn btn-outline" type="submit">Importar usuários existentes</button>
   </form>
 </div>

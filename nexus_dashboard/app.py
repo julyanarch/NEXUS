@@ -73,6 +73,17 @@ def servers_missing_vault():
     ]
 
 
+def _get_csrf_token():
+    """Token por sessao (nao por formulario) usado pra confirmar que um POST
+    veio de um formulario da propria aplicacao, nao de outro site (CSRF) -
+    gerado uma vez e reaproveitado enquanto a sessao do navegador durar."""
+    token = session.get("csrf_token")
+    if not token:
+        token = secrets.token_hex(32)
+        session["csrf_token"] = token
+    return token
+
+
 def _resolve_check_path(username, raw_path):
     """Resolve o caminho digitado em 'Verificar arquivo' pro caminho completo
     a checar no servidor - sem restricao (proposital: e so consulta/leitura,
@@ -115,7 +126,17 @@ def register_routes(app):
             "not_created_via_nexus": models.NOT_CREATED_VIA_NEXUS,
             "discover_min_uid": config.DISCOVER_MIN_UID,
             "available_shells": config.AVAILABLE_SHELLS,
+            "csrf_token": _get_csrf_token(),
         }
+
+    @app.before_request
+    def _enforce_csrf():
+        if request.method == "POST":
+            sent = request.form.get("csrf_token", "")
+            expected = session.get("csrf_token", "")
+            if not expected or not secrets.compare_digest(sent, expected):
+                flash("Sessão expirada ou formulário inválido - tente novamente.", "danger")
+                return redirect(request.referrer or url_for("dashboard"))
 
     # --------------------------------------------------------------- home --
 
@@ -192,8 +213,9 @@ def register_routes(app):
                 [
                     "ansible-vault", "encrypt_string",
                     "--vault-password-file", config.VAULT_PASS_FILE,
-                    become_password, "--name", "vault_become_password",
+                    "--stdin-name", "vault_become_password",
                 ],
+                input=become_password,
                 cwd=config.ANSIBLE_DIR,
                 capture_output=True,
                 text=True,
@@ -815,4 +837,5 @@ def register_routes(app):
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    debug_mode = os.environ.get("NEXUS_DASHBOARD_DEBUG", "0") == "1"
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)
