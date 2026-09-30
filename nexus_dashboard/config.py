@@ -55,6 +55,17 @@ AVAILABLE_SHELLS = [
     ("/usr/sbin/nologin", "/usr/sbin/nologin (sem acesso interativo - conta de servico)"),
 ]
 
+# Nome do grupo que da privilegio de administrador num servidor recem-
+# cadastrado, se o cadastro nao informar outro (a maioria das distros usa
+# "sudo" - Debian/Ubuntu; CentOS/RHEL usa "wheel").
+DEFAULT_ADMIN_GROUP = "sudo"
+
+# Placeholder usado no formulario de "Nova acao" no lugar do nome literal do
+# grupo administrativo - cada servidor pode ter um nome diferente (sudo x
+# wheel), entao a acao guarda esse token e o resolve para o grupo real de
+# cada servidor de destino na hora de executar (ver app.py:_run_action).
+ADMIN_GROUP_TOKEN = "__ADMIN__"
+
 # Cores dos graficos do Painel. Status (good/warning/critical) sao valores
 # fixos, validados para contraste >=3:1 contra o fundo dos cards (#1b1229) -
 # nao mudam com o tema. "neutral" e um cinza deliberado (sem carga de status)

@@ -22,6 +22,15 @@
       <input type="number" name="ssh_port" value="{{ server.ssh_port if server else 22 }}" required>
     </div>
     <div class="form-group">
+      <label>Grupo administrativo</label>
+      <input type="text" name="admin_group" value="{{ server.admin_group if server else 'sudo' }}" required>
+      <span class="muted" style="font-size:0.78rem;">
+        Nome do grupo que dá privilégio de administrador nesse servidor - "sudo" na maioria das
+        distros (Debian/Ubuntu), "wheel" em CentOS/RHEL. Usado quando uma ação marca
+        "administrador" no formulário de nova ação.
+      </span>
+    </div>
+    <div class="form-group">
       <label><input type="checkbox" name="enabled" {{ 'checked' if (server is none) or server.enabled }}> Habilitado</label>
     </div>
     {% if server %}

@@ -126,6 +126,7 @@ def register_routes(app):
             "not_created_via_nexus": models.NOT_CREATED_VIA_NEXUS,
             "discover_min_uid": config.DISCOVER_MIN_UID,
             "available_shells": config.AVAILABLE_SHELLS,
+            "admin_group_token": config.ADMIN_GROUP_TOKEN,
             "csrf_token": _get_csrf_token(),
         }
 
@@ -290,6 +291,9 @@ def register_routes(app):
     def _sudo_nopasswd_from_form():
         return request.form.get("sudo_nopasswd") == "on"
 
+    def _admin_group_from_form():
+        return request.form.get("admin_group", "").strip() or config.DEFAULT_ADMIN_GROUP
+
     def _warn_duplicate_host(ssh_host, exclude_id=None):
         duplicates = models.find_servers_by_host(ssh_host, exclude_id=exclude_id)
         if duplicates:
@@ -369,6 +373,7 @@ def register_routes(app):
                 ssh_user,
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
+                admin_group=_admin_group_from_form(),
             )
             inventory_builder.rebuild_inventory()
 
@@ -427,6 +432,7 @@ def register_routes(app):
                 int(request.form.get("ssh_port") or 22),
                 request.form.get("enabled") == "on",
                 sudo_nopasswd=_sudo_nopasswd_from_form(),
+                admin_group=_admin_group_from_form(),
             )
             inventory_builder.rebuild_inventory()
             flash("Servidor atualizado.", "success")
@@ -580,8 +586,16 @@ def register_routes(app):
 
         for server_id in server_ids:
             server = models.get_server(server_id)
+            # "administrador" no formulario nao e um nome de grupo literal -
+            # cada servidor pode chamar isso de "sudo" ou de "wheel" (CentOS/
+            # RHEL), entao resolve pro grupo real desse servidor especifico
+            # antes de rodar, sem exigir que a acao seja refeita por servidor.
+            resolved_groups = row["groups"].replace(
+                config.ADMIN_GROUP_TOKEN, server["admin_group"] or config.DEFAULT_ADMIN_GROUP
+            )
+            server_row = dict(row, groups=resolved_groups)
             result = ansible_bridge.run_sanitize(
-                target_host=server["name"], mode=mode, rows=[row], password_hashes=password_hashes,
+                target_host=server["name"], mode=mode, rows=[server_row], password_hashes=password_hashes,
             )
             # "success" so diz que o Ansible rodou sem erro - o sanitizer processa
             # CSV em lote e sempre termina com exit 0, mesmo ignorando (usuario
@@ -605,7 +619,7 @@ def register_routes(app):
             managed_user_id = None
             if mode == "apply" and row_ok:
                 models.upsert_user_after_action(
-                    row["username"], server_id, row["action"], row["groups"], row["shell"],
+                    row["username"], server_id, row["action"], resolved_groups, row["shell"],
                     row["home"], row["ticket"], row["reason"], operator,
                 )
                 found = models.find_user_by_server(row["username"], server_id)
@@ -623,7 +637,7 @@ def register_routes(app):
                 status=row_status,
                 message=row_message,
                 ticket=row["ticket"],
-                groups_snapshot=row["groups"],
+                groups_snapshot=resolved_groups,
                 shell_snapshot=row["shell"],
                 performed_by=operator,
                 triggered_by="manual",

@@ -81,6 +81,9 @@ def _migrate_schema():
         conn.execute("ALTER TABLE servers ADD COLUMN decommissioned_by TEXT")
         conn.execute("ALTER TABLE servers ADD COLUMN decommission_reason TEXT")
         conn.commit()
+    if "admin_group" not in existing_columns:
+        conn.execute("ALTER TABLE servers ADD COLUMN admin_group TEXT NOT NULL DEFAULT 'sudo'")
+        conn.commit()
     _archive_decommissioned_names(conn)
 
     managed_users_columns = {row["name"] for row in conn.execute("PRAGMA table_info(managed_users)").fetchall()}
@@ -165,15 +168,18 @@ def get_server(server_id, conn=None):
     return row
 
 
-def create_server(name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False, conn=None):
+def create_server(name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False,
+                   admin_group=None, conn=None):
     own = conn is None
     conn = conn or get_db()
     try:
         ts = now_iso()
         cursor = conn.execute(
-            """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0, ts, ts),
+            """INSERT INTO servers (name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd,
+               admin_group, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0,
+             admin_group or config.DEFAULT_ADMIN_GROUP, ts, ts),
         )
         conn.commit()
         return cursor.lastrowid
@@ -194,14 +200,15 @@ def set_server_sudo_nopasswd(server_id, sudo_nopasswd):
         conn.close()
 
 
-def update_server(server_id, name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False):
+def update_server(server_id, name, ssh_host, ssh_user, ssh_port, enabled, sudo_nopasswd=False,
+                   admin_group=None):
     conn = get_db()
     try:
         conn.execute(
             """UPDATE servers SET name=?, ssh_host=?, ssh_user=?, ssh_port=?, enabled=?, sudo_nopasswd=?,
-               updated_at=? WHERE id=?""",
+               admin_group=?, updated_at=? WHERE id=?""",
             (name, ssh_host, ssh_user, ssh_port, 1 if enabled else 0, 1 if sudo_nopasswd else 0,
-             now_iso(), server_id),
+             admin_group or config.DEFAULT_ADMIN_GROUP, now_iso(), server_id),
         )
         conn.commit()
     finally:
