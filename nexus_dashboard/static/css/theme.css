@@ -521,6 +521,10 @@ input.pw-invalid { border-color: var(--danger); background: rgba(248, 113, 113, 
   flex-direction: column;
   overflow: hidden;
 }
+/* sem isso, o atributo "hidden" (usado pra abrir/fechar no app.js) e ignorado,
+   porque o "display: flex" acima teria prioridade sobre o display:none padrao
+   do navegador pra elementos com "hidden". */
+.chat-panel[hidden] { display: none; }
 
 .chat-panel-header {
   display: flex;
