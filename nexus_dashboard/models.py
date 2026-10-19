@@ -686,18 +686,22 @@ def daily_execution_counts(days=14, server_id=None):
 def executions_per_server(days=30, server_id=None):
     """Total de execucoes por servidor nos ultimos `days` dias, para o
     grafico de magnitude do Painel. Inclui servidores sem nenhuma execucao
-    no periodo (aparecem com contagem zero). Agrega por nome de exibicao
-    (sem o sufixo de arquivamento) - senao um servidor decomissionado mais
-    de uma vez aparece como varias barras separadas pro "mesmo" servidor.
+    no periodo (aparecem com contagem zero), mas SO os ainda cadastrados
+    (decommissioned_at IS NULL) - um servidor excluido nao deve continuar
+    aparecendo nesse grafico (ao contrario da tela Execucoes, que e
+    historico/auditoria e mantem tudo de proposito). Agrega por nome de
+    exibicao (sem o sufixo de arquivamento) - senao um servidor decomissionado
+    mais de uma vez aparece como varias barras separadas pro "mesmo" servidor.
     Com server_id, restringe a esse unico servidor (filtro do Painel)."""
     conn = get_db()
     query = """SELECT s.name AS server_name, COUNT(al.id) AS total
            FROM servers s
            LEFT JOIN action_log al
-             ON al.server_id = s.id AND al.performed_at >= datetime('now', ?)"""
+             ON al.server_id = s.id AND al.performed_at >= datetime('now', ?)
+           WHERE s.decommissioned_at IS NULL"""
     params = [f"-{days} days"]
     if server_id:
-        query += " WHERE s.id = ?"
+        query += " AND s.id = ?"
         params.append(server_id)
     query += " GROUP BY s.id"
     rows = conn.execute(query, params).fetchall()
