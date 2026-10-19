@@ -55,15 +55,21 @@
 
     <div id="password_group" class="form-grid" style="display:none;">
       <div class="form-group">
-        <label>Senha temporária (apenas para criação, na hora de Aplicar)</label>
+        <label>Senha temporária (apenas para criação, na hora de Aplicar)
+          <span class="pw-help" tabindex="0">?
+            <span class="pw-help-bubble">
+              Mínimo {{ temp_password_min_length }} caracteres, com letra maiúscula, minúscula e
+              caractere especial (ex.: <code>!@#$%</code>).
+            </span>
+          </span>
+        </label>
         <input type="password" name="temp_password" id="temp_password"
+               data-password-policy="{{ temp_password_min_length }}"
                minlength="{{ temp_password_min_length }}"
                pattern="(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{{ '{' }}{{ temp_password_min_length }},{{ '}' }}"
                title="Pelo menos {{ temp_password_min_length }} caracteres, com maiúscula, minúscula e caractere especial">
         <span class="muted" style="font-size:0.78rem;">
-          Mínimo {{ temp_password_min_length }} caracteres, com letra maiúscula, minúscula e
-          caractere especial (ex.: <code>!@#$%</code>). Válida só para o primeiro login — a troca
-          é obrigatória depois.
+          Válida só para o primeiro login — a troca é obrigatória depois.
         </span>
       </div>
       <div class="form-group">

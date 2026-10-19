@@ -38,16 +38,19 @@
         <input type="email" name="email" required>
       </div>
       <div class="form-group">
-        <label>Senha</label>
+        <label>Senha
+          <span class="pw-help" tabindex="0">?
+            <span class="pw-help-bubble">
+              Mínimo {{ temp_password_min_length }} caracteres, com letra maiúscula, minúscula e
+              caractere especial (ex.: <code>!@#$%</code>).
+            </span>
+          </span>
+        </label>
         <input type="password" name="password" required
+               data-password-policy="{{ temp_password_min_length }}"
                minlength="{{ temp_password_min_length }}"
                pattern="(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{{ '{' }}{{ temp_password_min_length }},{{ '}' }}"
                title="Pelo menos {{ temp_password_min_length }} caracteres, com maiúscula, minúscula e caractere especial">
-        <span class="muted" style="font-size:0.78rem;">
-          Mínimo {{ temp_password_min_length }} caracteres, com letra maiúscula, minúscula e
-          caractere especial (ex.: <code>!@#$%</code>) - mesma regra da senha temporária de criação
-          de usuário.
-        </span>
       </div>
       <button class="btn" type="submit">Criar conta</button>
     </form>
@@ -55,5 +58,7 @@
     <div class="auth-switch">Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></div>
     <div class="auth-footnote">Acesso restrito · NEXUS &middot; Grupo Think</div>
   </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

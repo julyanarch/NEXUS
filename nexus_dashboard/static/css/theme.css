@@ -430,3 +430,59 @@ pre { padding: 10px; overflow-x: auto; }
 .auth-switch { text-align: center; font-size: 0.82rem; color: var(--text-muted); margin-top: 18px; }
 
 .auth-footnote { text-align: center; color: var(--text-muted); font-size: 0.72rem; margin-top: 20px; }
+
+/* feedback ao vivo no campo de senha (Criar conta e Nova Acao), enquanto
+   digita - verde quando ja atende a politica de senha, vermelho quando
+   ainda nao (ver data-password-policy em app.js). */
+input.pw-valid { border-color: var(--ok); background: rgba(52, 211, 153, 0.08); }
+input.pw-invalid { border-color: var(--danger); background: rgba(248, 113, 113, 0.08); }
+
+/* "?" com balaozinho explicando a politica de senha no hover/foco - ao lado
+   do rotulo do campo, pra nao precisar de texto fixo ocupando espaco. */
+.pw-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  line-height: 1;
+  cursor: help;
+  position: relative;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.pw-help-bubble {
+  display: none;
+  position: absolute;
+  bottom: 135%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 230px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 11px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text);
+  text-align: left;
+  white-space: normal;
+  z-index: 5;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.pw-help-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--bg-card);
+}
+.pw-help:hover .pw-help-bubble,
+.pw-help:focus .pw-help-bubble { display: block; }

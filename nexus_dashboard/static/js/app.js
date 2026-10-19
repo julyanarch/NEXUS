@@ -81,4 +81,19 @@ document.addEventListener("DOMContentLoaded", function () {
     actionSelect.addEventListener("change", toggleCreateOnlyFields);
     toggleCreateOnlyFields();
   }
+
+  // Feedback ao vivo da politica de senha (fica verde/vermelha enquanto
+  // digita) - usado tanto na senha temporaria de Nova Acao quanto na senha
+  // de Criar conta. O campo so precisa de data-password-policy="<minimo>";
+  // o resto da regra (maiuscula, minuscula, caractere especial) e fixo,
+  // igual a validacao do servidor (ver app.temp_password_errors).
+  document.querySelectorAll("[data-password-policy]").forEach(function (el) {
+    var min = el.getAttribute("data-password-policy");
+    var rule = new RegExp("(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{" + min + ",}");
+    el.addEventListener("input", function () {
+      el.classList.remove("pw-valid", "pw-invalid");
+      if (!el.value) return;
+      el.classList.add(rule.test(el.value) ? "pw-valid" : "pw-invalid");
+    });
+  });
 });
