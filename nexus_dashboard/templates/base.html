@@ -23,12 +23,8 @@
       <a class="nav-link {{ 'active' if request.path.startswith('/runs') }}" href="{{ url_for('list_runs') }}">Execuções</a>
 
       <div class="operator-box">
-        {% if operator_name %}
-          Operador: <strong>{{ operator_name }}</strong><br>
-          <a href="{{ url_for('set_operator') }}">trocar</a>
-        {% else %}
-          <a href="{{ url_for('set_operator') }}">Identificar operador</a>
-        {% endif %}
+        <strong>{{ operator_name }}</strong><br>
+        <a href="{{ url_for('logout') }}">sair</a>
         {% if servers_missing_vault %}
         <br>
         <span style="color: var(--danger);">{{ servers_missing_vault|length }} servidor(es) sem senha de sudo</span>

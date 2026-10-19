@@ -1,6 +1,8 @@
 import os
 import secrets
 
+from werkzeug.security import generate_password_hash
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DB_PATH = os.path.join(BASE_DIR, "db", "nexus.db")
@@ -96,13 +98,17 @@ DISCOVER_MIN_UID = 1000
 # fixo conhecido no codigo-fonte.
 SECRET_KEY = os.environ.get("NEXUS_DASHBOARD_SECRET") or secrets.token_hex(32)
 
-# Depois de quanto tempo sem trocar a identificacao de operador (tela
-# "Identificar operador") a sessao e considerada "velha demais" e a app pede
-# pra identificar de novo antes de qualquer acao - existe pra evitar que uma
-# acao fique registrada em nome de quem usou o navegador por ultimo, se a
-# pessoa seguinte esquecer de clicar em "trocar" (ex.: navegador/VM
-# compartilhado, ficou aberto o dia todo).
-OPERATOR_SESSION_MINUTES = 30
+# Login do painel - uso pessoal (nao e multiusuario), por isso e uma
+# credencial fixa em vez de uma tabela de usuarios. Em producao, defina
+# NEXUS_DASHBOARD_PASSWORD_HASH (gerado com werkzeug.security.generate_password_hash)
+# num valor fixo - sem a variavel definida, gera o hash a partir de
+# NEXUS_DASHBOARD_PASSWORD (ou da senha padrao abaixo) a cada start do
+# processo; a senha em si nunca fica gravada em texto puro.
+DASHBOARD_USERNAME = os.environ.get("NEXUS_DASHBOARD_USERNAME", "julyana.silva")
+DASHBOARD_DISPLAY_NAME = os.environ.get("NEXUS_DASHBOARD_DISPLAY_NAME", "Julyana Silva")
+DASHBOARD_PASSWORD_HASH = os.environ.get("NEXUS_DASHBOARD_PASSWORD_HASH") or generate_password_hash(
+    os.environ.get("NEXUS_DASHBOARD_PASSWORD", "Br@$torag3")
+)
 
 SCHEDULER_HOUR = 3
 SCHEDULER_MINUTE = 0

@@ -8,6 +8,7 @@ import time
 
 from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
 from passlib.hash import sha512_crypt
+from werkzeug.security import check_password_hash
 
 import ai_engine
 import ansible_bridge
@@ -37,27 +38,11 @@ def create_app():
 
 
 def require_operator(view_func):
-    @functools.wraps(view_func)
-    def wrapped(*args, **kwargs):
-        set_at = session.get("operator_set_at")
-        expired = set_at is not None and (time.time() - set_at) > config.OPERATOR_SESSION_MINUTES * 60
-
-        if not session.get("operator_name") or expired:
-            session.pop("operator_name", None)
-            session.pop("operator_set_at", None)
-            if expired:
-                flash(
-                    f"Sua identificacao de operador expirou (valida por {config.OPERATOR_SESSION_MINUTES} min, "
-                    "pra evitar que uma acao fique registrada em nome de quem usou o navegador por ultimo) - "
-                    "informe seu nome de novo antes de continuar.",
-                    "warning",
-                )
-            else:
-                flash("Informe seu nome de operador antes de executar acoes.", "warning")
-            session["next_url"] = request.url
-            return redirect(url_for("set_operator"))
-        return view_func(*args, **kwargs)
-    return wrapped
+    """Antes, pedia pra "identificar o operador" (nome livre) nas rotas de
+    acao. Agora o login (ver _enforce_login) ja e exigido pra toda a
+    aplicacao e ja fixa quem esta operando, entao isso virou um passthrough -
+    mantido so pra nao precisar tirar o decorator de cada rota que o usa."""
+    return view_func
 
 
 def server_ready_for_actions(server):
@@ -131,6 +116,14 @@ def register_routes(app):
         }
 
     @app.before_request
+    def _enforce_login():
+        if request.endpoint in ("login", "static"):
+            return
+        if not session.get("logged_in"):
+            session["next_url"] = request.url
+            return redirect(url_for("login"))
+
+    @app.before_request
     def _enforce_csrf():
         if request.method == "POST":
             sent = request.form.get("csrf_token", "")
@@ -168,21 +161,32 @@ def register_routes(app):
             selected_server_id=selected_server_id,
         )
 
-    # ---------------------------------------------------------- operador --
+    # ------------------------------------------------------------- login --
 
-    @app.route("/operador", methods=["GET", "POST"])
-    def set_operator():
+    @app.route("/login", methods=["GET", "POST"])
+    def login():
         if request.method == "POST":
-            name = request.form.get("operator_name", "").strip()
-            if not name:
-                flash("Informe um nome valido.", "danger")
-                return redirect(url_for("set_operator"))
-            session["operator_name"] = name
-            session["operator_set_at"] = time.time()
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            valid = bool(username) and bool(password) and secrets.compare_digest(
+                username, config.DASHBOARD_USERNAME
+            ) and check_password_hash(config.DASHBOARD_PASSWORD_HASH, password)
+            if not valid:
+                flash("Usuário ou senha inválidos.", "danger")
+                return redirect(url_for("login"))
+            session["logged_in"] = True
+            session["operator_name"] = config.DASHBOARD_DISPLAY_NAME
             next_url = session.pop("next_url", None)
-            flash(f"Identificado como {name}.", "success")
             return redirect(next_url or url_for("dashboard"))
-        return render_template("setup/operador.html")
+        if session.get("logged_in"):
+            return redirect(url_for("dashboard"))
+        return render_template("login.html")
+
+    @app.route("/logout")
+    def logout():
+        session.clear()
+        flash("Você saiu.", "success")
+        return redirect(url_for("login"))
 
     # -------------------------------------------------------------- vault --
 
