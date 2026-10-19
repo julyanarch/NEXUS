@@ -3,6 +3,8 @@ import re
 import sqlite3
 from datetime import date, datetime, timedelta, timezone
 
+from werkzeug.security import generate_password_hash
+
 import config
 
 
@@ -139,6 +141,33 @@ def _seed_servers_from_legacy_conf():
         pass
     finally:
         conn.close()
+
+
+# --------------------------------------------------------- dashboard_users --
+
+def create_dashboard_user(name, email, password):
+    """Cria uma conta de acesso ao painel (ver dashboard_users no schema) -
+    usada pela tela de Login > "Criar conta". Levanta sqlite3.IntegrityError
+    se o e-mail ja estiver cadastrado (UNIQUE ... COLLATE NOCASE)."""
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO dashboard_users (name, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
+            (name, email, generate_password_hash(password), now_iso()),
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def get_dashboard_user_by_email(email):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM dashboard_users WHERE email = ? COLLATE NOCASE", (email,)
+    ).fetchone()
+    conn.close()
+    return row
 
 
 # ---------------------------------------------------------------- servers --

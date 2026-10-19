@@ -95,6 +95,18 @@ CREATE TABLE IF NOT EXISTS scheduler_runs (
     UNIQUE (run_type, run_date)
 );
 
+-- Contas de quem acessa o PAINEL do NEXUS (login da aplicacao) - nao confundir
+-- com managed_users, que sao as contas Linux geridas NOS SERVIDORES. Hoje so
+-- a Julyana usa (login fixo em config.py); esta tabela existe pro botao
+-- "Criar conta" da tela de login, caso outro analista passe a usar o painel.
+CREATE TABLE IF NOT EXISTS dashboard_users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_managed_users_status ON managed_users(status);
 CREATE INDEX IF NOT EXISTS idx_managed_users_server ON managed_users(server_id);
 CREATE INDEX IF NOT EXISTS idx_action_log_user ON action_log(managed_user_id);

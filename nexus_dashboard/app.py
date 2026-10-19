@@ -3,6 +3,7 @@ import os
 import re
 import secrets
 import shutil
+import sqlite3
 import subprocess
 import time
 
@@ -117,7 +118,7 @@ def register_routes(app):
 
     @app.before_request
     def _enforce_login():
-        if request.endpoint in ("login", "static"):
+        if request.endpoint in ("login", "register", "static"):
             return
         if not session.get("logged_in"):
             session["next_url"] = request.url
@@ -168,14 +169,24 @@ def register_routes(app):
         if request.method == "POST":
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
-            valid = bool(username) and bool(password) and secrets.compare_digest(
-                username, config.DASHBOARD_USERNAME
-            ) and check_password_hash(config.DASHBOARD_PASSWORD_HASH, password)
-            if not valid:
+            display_name = None
+            if username and password:
+                if secrets.compare_digest(username, config.DASHBOARD_USERNAME) and check_password_hash(
+                    config.DASHBOARD_PASSWORD_HASH, password
+                ):
+                    display_name = config.DASHBOARD_DISPLAY_NAME
+                else:
+                    # tambem aceita e-mail/senha de uma conta criada em "Criar conta"
+                    # (ver dashboard_users) - login da Julyana acima continua valendo
+                    # do mesmo jeito, essa e so uma segunda forma de entrar.
+                    dash_user = models.get_dashboard_user_by_email(username)
+                    if dash_user and check_password_hash(dash_user["password_hash"], password):
+                        display_name = dash_user["name"]
+            if not display_name:
                 flash("Usuário ou senha inválidos.", "danger")
                 return redirect(url_for("login"))
             session["logged_in"] = True
-            session["operator_name"] = config.DASHBOARD_DISPLAY_NAME
+            session["operator_name"] = display_name
             next_url = session.pop("next_url", None)
             return redirect(next_url or url_for("dashboard"))
         if session.get("logged_in"):
@@ -187,6 +198,31 @@ def register_routes(app):
         session.clear()
         flash("Você saiu.", "success")
         return redirect(url_for("login"))
+
+    @app.route("/register", methods=["GET", "POST"])
+    def register():
+        if request.method == "POST":
+            name = request.form.get("name", "").strip()
+            email = request.form.get("email", "").strip()
+            password = request.form.get("password", "")
+            if not name or not email or not password:
+                flash("Preencha nome, e-mail e senha.", "danger")
+                return redirect(url_for("register"))
+            if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+                flash("Informe um e-mail válido.", "danger")
+                return redirect(url_for("register"))
+            pw_errors = temp_password_errors(password)
+            if pw_errors:
+                flash("A senha precisa ter " + ", ".join(pw_errors) + ".", "danger")
+                return redirect(url_for("register"))
+            try:
+                models.create_dashboard_user(name, email, password)
+            except sqlite3.IntegrityError:
+                flash("Já existe uma conta com esse e-mail.", "danger")
+                return redirect(url_for("register"))
+            flash("Conta criada! Já pode entrar com seu e-mail e senha.", "success")
+            return redirect(url_for("login"))
+        return render_template("register.html")
 
     # -------------------------------------------------------------- vault --
 

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEXUS · Criar conta</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+</head>
+<body class="auth-page">
+  {% include "_auth_background.html" %}
+
+  <div class="auth-card card">
+    <div class="auth-brand-row">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="">
+      <div class="brand">NEXUS<span>.</span></div>
+    </div>
+    <div class="auth-sub">Gestão de Usuários</div>
+
+    <h1 class="auth-title">Criar conta de analista</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="form-group">
+        <label>Nome</label>
+        <input type="text" name="name" required autofocus>
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input type="password" name="password" required
+               minlength="{{ temp_password_min_length }}"
+               pattern="(?=.*[A-Z])(?=.*[a-z])(?=.*[^A-Za-z0-9]).{{ '{' }}{{ temp_password_min_length }},{{ '}' }}"
+               title="Pelo menos {{ temp_password_min_length }} caracteres, com maiúscula, minúscula e caractere especial">
+        <span class="muted" style="font-size:0.78rem;">
+          Mínimo {{ temp_password_min_length }} caracteres, com letra maiúscula, minúscula e
+          caractere especial (ex.: <code>!@#$%</code>) - mesma regra da senha temporária de criação
+          de usuário.
+        </span>
+      </div>
+      <button class="btn" type="submit">Criar conta</button>
+    </form>
+
+    <div class="auth-switch">Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></div>
+    <div class="auth-footnote">Acesso restrito · NEXUS &middot; Grupo Think</div>
+  </div>
+</body>
+</html>
