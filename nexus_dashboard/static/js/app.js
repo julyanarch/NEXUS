@@ -96,4 +96,52 @@ document.addEventListener("DOMContentLoaded", function () {
       el.classList.add(rule.test(el.value) ? "pw-valid" : "pw-invalid");
     });
   });
+
+  // NEXUS AI (suporte local) - abre/fecha o balaozinho e manda as perguntas
+  // pro /chat (100% local, sem IA nem chamada de rede - ver support_bot.py).
+  var chatBubble = document.getElementById("chat_bubble");
+  var chatPanel = document.getElementById("chat_panel");
+  var chatClose = document.getElementById("chat_close");
+  var chatForm = document.getElementById("chat_form");
+  var chatQuestion = document.getElementById("chat_question");
+  var chatMessages = document.getElementById("chat_messages");
+
+  function addChatMessage(text, who) {
+    if (!chatMessages) return;
+    var div = document.createElement("div");
+    div.className = "chat-message chat-message-" + who;
+    div.textContent = text;
+    chatMessages.appendChild(div);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  if (chatBubble && chatPanel) {
+    chatBubble.addEventListener("click", function () {
+      chatPanel.hidden = !chatPanel.hidden;
+      if (!chatPanel.hidden && chatQuestion) chatQuestion.focus();
+    });
+  }
+  if (chatClose && chatPanel) {
+    chatClose.addEventListener("click", function () { chatPanel.hidden = true; });
+  }
+  if (chatForm) {
+    chatForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var question = (chatQuestion.value || "").trim();
+      if (!question) return;
+      addChatMessage(question, "user");
+      chatQuestion.value = "";
+      var formData = new URLSearchParams();
+      formData.set("csrf_token", chatForm.querySelector("[name=csrf_token]").value);
+      formData.set("question", question);
+      fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: formData.toString(),
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) { addChatMessage(data.answer || "Sem resposta.", "bot"); })
+        .catch(function () { addChatMessage("Não consegui falar com o servidor agora.", "bot"); });
+    });
+  }
 });

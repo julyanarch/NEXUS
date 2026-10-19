@@ -17,6 +17,7 @@ import charts
 import config
 import inventory_builder
 import models
+import support_bot
 from scheduler import start_scheduler
 
 
@@ -114,6 +115,7 @@ def register_routes(app):
             "available_shells": config.AVAILABLE_SHELLS,
             "admin_group_token": config.ADMIN_GROUP_TOKEN,
             "csrf_token": _get_csrf_token(),
+            "support_bot_name": config.SUPPORT_BOT_NAME,
         }
 
     @app.before_request
@@ -223,6 +225,13 @@ def register_routes(app):
             flash("Conta criada! Já pode entrar com seu e-mail e senha.", "success")
             return redirect(url_for("login"))
         return render_template("register.html")
+
+    # ------------------------------------------------------- nexus ai chat --
+
+    @app.route("/chat", methods=["POST"])
+    def chat():
+        question = request.form.get("question", "").strip()
+        return {"answer": support_bot.answer(question)}
 
     # -------------------------------------------------------------- vault --
 

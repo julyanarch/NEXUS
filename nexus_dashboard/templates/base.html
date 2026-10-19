@@ -48,6 +48,30 @@
     </main>
   </div>
 
+  <div class="chat-widget">
+    <div class="chat-panel" id="chat_panel" hidden>
+      <div class="chat-panel-header">
+        <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="">
+        <strong>{{ support_bot_name }}</strong>
+        <button type="button" class="chat-close" id="chat_close" aria-label="Fechar">×</button>
+      </div>
+      <div class="chat-messages" id="chat_messages">
+        <div class="chat-message chat-message-bot">
+          Oi, eu sou o {{ support_bot_name }}. Pergunte sobre os usuários e servidores do NEXUS -
+          por exemplo, "quais usuários estão bloqueados?".
+        </div>
+      </div>
+      <form class="chat-form" id="chat_form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="text" name="question" id="chat_question" placeholder="Pergunte algo..." autocomplete="off">
+        <button class="btn btn-sm" type="submit">Enviar</button>
+      </form>
+    </div>
+    <button type="button" class="chat-bubble" id="chat_bubble" aria-label="Abrir {{ support_bot_name }}">
+      <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="">
+    </button>
+  </div>
+
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

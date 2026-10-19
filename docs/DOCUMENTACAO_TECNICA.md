@@ -1549,3 +1549,24 @@ iniciado - ambos estão registrados aqui como ponto de partida técnico para qua
 **Status:** não iniciado, fora do escopo atual entregue. O servidor `10.1.255.100` continua
 cadastrado e operando normalmente dentro do seu propósito atual (demonstração/leitura), sem qualquer
 ação de gestão disponível para ele até que esse trabalho futuro seja endereçado.
+
+## 60. NEXUS AI: balãozinho de suporte local (sem IA, sem API externa)
+
+**O que é:** um balãozinho de chat no canto inferior direito do painel (`support_bot.py`), pra
+perguntas pontuais sobre os usuários e servidores já cadastrados - ex.: "quais servidores existem?",
+"quais usuários existem no servidor X?", "fulano existe no servidor Y?", "quais usuários estão
+bloqueados?". Ele reaproveita as mesmas consultas que já existem em `models.py` (`list_users`,
+`list_servers`) - não é uma fonte de dado nova, é uma forma diferente de perguntar o que o painel já
+mostra em tela.
+
+**Por que é 100% local, sem IA de verdade:** foi cogitado usar uma API de IA externa (Groq e depois
+Anthropic) pra deixar a resposta mais natural, mas a decisão final foi **não usar nenhuma API
+externa** - o NEXUS gerencia servidores e rede reais da empresa, e expor qualquer dado (mesmo que só
+nome de usuário/servidor, sem credencial) pra fora da rede foi considerado um risco desnecessário pra
+um recurso de conveniência. Por isso o NEXUS AI só faz reconhecimento de palavra-chave (nome de servidor
+já cadastrado, status, ou um username que já existe no banco) e monta a resposta direto com texto
+fixo, sem IA nenhuma por trás e **sem nenhuma chamada de rede** - roda inteiramente dentro do próprio
+processo Flask, igual ao `ai_engine.py`.
+
+**Status:** entregue. Cobre só os formatos de pergunta citados acima, de propósito (pedido explícito
+de manter simples, sem motor de intenção genérico e sem dependência externa).

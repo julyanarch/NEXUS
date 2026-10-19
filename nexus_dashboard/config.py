@@ -110,5 +110,10 @@ DASHBOARD_PASSWORD_HASH = os.environ.get("NEXUS_DASHBOARD_PASSWORD_HASH") or gen
     os.environ.get("NEXUS_DASHBOARD_PASSWORD", "Br@$torag3")
 )
 
+# NEXUS AI - balaozinho de suporte do painel (ver support_bot.py). 100% local,
+# sem IA nem chamada de rede - so reconhece a pergunta por palavra-chave e
+# responde com dados que ja estao no banco.
+SUPPORT_BOT_NAME = "NEXUS AI"
+
 SCHEDULER_HOUR = 3
 SCHEDULER_MINUTE = 0
